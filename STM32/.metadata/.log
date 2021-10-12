@@ -1,0 +1,18 @@
+!SESSION 2021-10-12 17:50:27.714 -----------------------------------------------
+eclipse.buildId=Version 1.7.0
+java.version=11.0.10
+java.vendor=AdoptOpenJDK
+BootLoader constants: OS=win32, ARCH=x86_64, WS=win32, NL=en_US
+Command-line arguments:  -os win32 -ws win32 -arch x86_64
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 4 4 2021-10-12 17:52:32.046
+!MESSAGE CubeMX plugin appears to be active, Log4j initialization might be too late.
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 1 1 2021-10-12 17:52:32.144
+!MESSAGE Log4j initialized with config file D:\projects\RotaryDecoder\STM32\.metadata\.log4j.xml
+
+!ENTRY com.st.stm32cube.ide.mcu.ide 1 1 2021-10-12 17:52:47.016
+!MESSAGE Started RMI Server, listening on port 41338
+
+!ENTRY org.eclipse.cdt.core 1 0 2021-10-12 17:55:42.456
+!MESSAGE Indexed 'STM32F103C8' (19 sources, 78 headers) in 4.86 sec: 3,658 declarations; 13,171 references; 0 unresolved inclusions; 1 syntax errors; 2 unresolved names (0.012%)
