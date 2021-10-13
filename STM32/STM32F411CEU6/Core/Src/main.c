@@ -68,9 +68,9 @@ int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
 	instance.s1 = buf[0];
 	instance.s2 = buf[1];
 
-	instance.value = buf[3];
+	instance.value = buf[2];
 	instance.value <<= 8;
-	instance.value |= buf[2];
+	instance.value |= buf[3];
 
 	return (USBD_OK);
 };
@@ -172,8 +172,8 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  buf[0] = instance.s1;
 	  buf[1] = instance.s2;
-	  buf[3] = instance.value >> 0;
 	  buf[2] = instance.value >> 8;
+	  buf[3] = instance.value >> 0;
 
 	  USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 4);  //run as USB mouse
 	  HAL_Delay(10);
