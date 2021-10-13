@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "usbd_customhid.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,7 +55,77 @@ static void MX_GPIO_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+extern USBD_HandleTypeDef hUsbDeviceFS;
 
+static struct
+{
+	uint8_t s1, s2, rot;
+	int16_t value;
+} instance;
+
+int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
+{
+	instance.s1 = buf[0];
+	instance.s2 = buf[1];
+
+	instance.value = buf[3];
+	instance.value <<= 8;
+	instance.value |= buf[2];
+
+	return (USBD_OK);
+};
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	if(GPIO_Pin != GPIO_PIN_9 && GPIO_Pin != GPIO_PIN_8)
+		return;
+
+/*
+ * CW
+ *
+ * 00	10
+ * 01	00
+ * 10	11
+ * 11	01
+ *
+ * CCW
+ *
+ * 00	01
+ * 01	11
+ * 10	00
+ * 11	10
+ *
+ * MAP
+ *
+ * 00	00	 0
+ * 00	01	-1
+ * 00	10	+1
+ * 00	11	 0
+ * 01	00	+1
+ * 01	01	 0
+ * 01	10	 0
+ * 01	11	-1
+ * 10	00	-1
+ * 10	01	 0
+ * 10	10	 0
+ * 10	11	+1
+ * 11	00	 0
+ * 11	01	+1
+ * 11	10	-1
+ * 11	11	 0
+ *
+ */
+
+	static const int8_t r[16] = { 0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0 };
+
+
+	instance.rot <<= 1;
+	instance.rot |= HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8);
+	instance.rot <<= 1;
+	instance.rot |= HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9);
+
+	instance.value += r[ instance.rot & 0x0F ];
+};
 /* USER CODE END 0 */
 
 /**
@@ -65,7 +135,7 @@ static void MX_GPIO_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	int led_cnt = 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -95,9 +165,21 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  uint8_t buf[4];
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  buf[0] = instance.s1;
+	  buf[1] = instance.s2;
+	  buf[3] = instance.value >> 0;
+	  buf[2] = instance.value >> 8;
+
+	  USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 4);  //run as USB mouse
+	  HAL_Delay(10);
+
+	  if(!(led_cnt % 10))
+		  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+	  led_cnt++;
   }
   /* USER CODE END 3 */
 }

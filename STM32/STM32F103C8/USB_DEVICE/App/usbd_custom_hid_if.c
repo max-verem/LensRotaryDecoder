@@ -32,7 +32,7 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+extern int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf);
 /* USER CODE END PV */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -107,7 +107,6 @@ __ALIGN_BEGIN static uint8_t CUSTOM_HID_ReportDesc_FS[USBD_CUSTOM_HID_REPORT_DES
 		0x75, 0x08,        // REPORT_SIZE (8)
 		0x95, 0x14,        // REPORT_COUNT (20)
 		0x91, 0x02,        // OUTPUT (Data,Var,Abs)
-		0xc0               // END_COLLECTION  /* USER CODE END 0 */
   0xC0    /*     END_COLLECTION	             */
 };
 
@@ -191,7 +190,15 @@ static int8_t CUSTOM_HID_DeInit_FS(void)
 static int8_t CUSTOM_HID_OutEvent_FS(uint8_t event_idx, uint8_t state)
 {
   /* USER CODE BEGIN 6 */
-  return (USBD_OK);
+    uint8_t buf[4];
+    USBD_CUSTOM_HID_HandleTypeDef    *hhid = (USBD_CUSTOM_HID_HandleTypeDef*)hUsbDeviceFS.pClassData;
+
+    buf[0] = hhid->Report_buf[0];
+    buf[1] = hhid->Report_buf[1];
+    buf[2] = hhid->Report_buf[2];
+    buf[3] = hhid->Report_buf[3];
+
+    return CUSTOM_HID_OutEvent_FS_main(buf);
   /* USER CODE END 6 */
 }
 
