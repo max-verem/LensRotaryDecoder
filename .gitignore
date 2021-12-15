@@ -1,8 +1,7 @@
-src/rs_vrpn/rs_vrpn.git.h
-src/rs_vrpn/rs_vrpn
-src/rs_vrpn/rs_vrpn.data
-src/aruco/aruco_test
-src/indiemark/indiemark_test
+src/ez-usb/ez_usb_rot_dec.git.h
+src/ez-usb/ez_usb_rot_dec.log*
+src/ez-usb/ez_usb_rot_dec
+
 
 # Prerequisites
 *.d
