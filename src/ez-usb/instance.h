@@ -41,6 +41,12 @@ typedef struct instance_desc
         void *queue1_data[MAX_TRANSFER_CNT], *queue2_data[MAX_TRANSFER_CNT];
     } xfr;
 
+    struct
+    {
+        int64_t samples, counters[3];
+        uint8_t prev[3];
+    } decoder;
+
     DEFAULT_INSTANCE_PARAMS
 } instance_t;
 

@@ -183,13 +183,16 @@ static void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 
 static void* counter_proc(void* p)
 {
+    int i;
     instance_t* instance = (instance_t*)p;
 
     logger_printf(0, "%s: Entering...", __FUNCTION__);
 
     while(!instance->xfr.errors)
     {
+        int addon[3];
         struct timespec to;
+        uint8_t prev[3];
         struct libusb_transfer *xfr = NULL;
 
         /* wait for buffer */
@@ -209,6 +212,36 @@ static void* counter_proc(void* p)
         /* process here */
         if(!xfr)
             continue;
+
+        prev[0] = instance->decoder.prev[0];
+        prev[1] = instance->decoder.prev[1];
+        prev[2] = instance->decoder.prev[2];
+        addon[0] = addon[1] = addon[2] = 0;
+
+        for(i = 0; i < xfr->actual_length; i++)
+        {
+            unsigned char v = xfr->buffer[i];
+            static const int8_t r[16] = { 0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0 };
+
+            prev[0] <<= 2; prev[0] |= v & 0x03; v >>= 2;
+            addon[0] += r[prev[0] & 0x0f];
+
+            prev[1] <<= 2; prev[1] |= v & 0x03; v >>= 2;
+            addon[1] += r[prev[1] & 0x0f];
+
+            prev[2] <<= 2; prev[2] |= v & 0x03; v >>= 2;
+            addon[2] += r[prev[2] & 0x0f];
+        };
+
+        instance->decoder.counters[0] += addon[0];
+        instance->decoder.counters[1] += addon[1];
+        instance->decoder.counters[2] += addon[2];
+
+        instance->decoder.prev[0] = prev[0];
+        instance->decoder.prev[1] = prev[1];
+        instance->decoder.prev[2] = prev[2];
+
+        instance->decoder.samples += xfr->actual_length;
 
         /* enqueue processed buffers */
         pthread_mutex_lock(&instance->lock);

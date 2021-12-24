@@ -90,7 +90,13 @@ int main(int argc, char** argv)
 
         /* main loop */
         while(!f_exit)
+        {
+            fprintf(stderr, "| %10" PRId64 " | %10" PRId64 " | %10" PRId64 "| [%15" PRIu64  "  ]\r",
+                instance->decoder.counters[0], instance->decoder.counters[1],
+                instance->decoder.counters[2], instance->decoder.samples);
+
             usleep(100000);
+        };
 
         logger_printf(0, "%s: Finishing...", __FUNCTION__);
 
