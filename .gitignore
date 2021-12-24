@@ -1,0 +1,115 @@
+src/ez-usb/ez_usb_rot_dec.git.h
+src/ez-usb/ez_usb_rot_dec.log*
+src/ez-usb/ez_usb_rot_dec
+
+
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+
+# -------------
+libtool
+.libs/
+*.la
+*.lo
+.dirstamp
+*~
+*.bak
+*.bak1
+*.q
+*.q1
+*.q2
+*.nvvp
+*.valgrind
+*.sh
+*.log*
+*.d
+*.o
+*.exe*
+Makefile
+Makefile.in
+.deps
+INSTALL
+ABOUT-NLS
+aclocal.m4
+autom4te.cache/
+compile
+config.h
+config.h.in
+config.status
+config.guess
+config.rpath
+config.sub
+configure
+depcomp
+install-sh
+missing
+po/Makefile.in.in
+stamp-h1
+config.h.in~
+intltool-extract.in
+intltool-merge.in
+intltool-update.in
+m4/
+po/Makefile.in.in~
+po/Makevars.template
+po/POTFILES
+po/Rules-quot
+po/boldquot.sed
+po/en@boldquot.header
+po/en@quot.header
+po/insert-header.sin
+po/quot.sed
+po/remove-potcdate.sin
+po/stamp-it
+
