@@ -1,5 +1,6 @@
 if !WIN32
 SUBDIRS1 = \
+    stm32_rot_dec \
     ez-usb
 endif
 SUBDIRS = $(SUBDIRS1)

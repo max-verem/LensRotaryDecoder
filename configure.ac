@@ -107,4 +107,5 @@ Makefile
 po/Makefile.in
 src/Makefile
 src/ez-usb/Makefile
+src/stm32_rot_dec/Makefile
 ])
