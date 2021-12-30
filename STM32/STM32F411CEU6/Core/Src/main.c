@@ -60,7 +60,7 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 static struct
 {
 	uint8_t s1, s2, rot;
-	int16_t value;
+	int32_t value;
 } instance;
 
 int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
@@ -71,6 +71,10 @@ int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
 	instance.value = buf[2];
 	instance.value <<= 8;
 	instance.value |= buf[3];
+	instance.value <<= 8;
+	instance.value |= buf[4];
+	instance.value <<= 8;
+	instance.value |= buf[5];
 
 	return (USBD_OK);
 };
@@ -166,16 +170,18 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  uint8_t buf[4];
+	  uint8_t buf[8];
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 	  buf[0] = instance.s1;
 	  buf[1] = instance.s2;
-	  buf[2] = instance.value >> 8;
-	  buf[3] = instance.value >> 0;
+	  buf[2] = instance.value >> 24;
+	  buf[3] = instance.value >> 16;
+	  buf[4] = instance.value >>  8;
+	  buf[5] = instance.value >>  0;
 
-	  USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 4);  //run as USB mouse
+	  USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 6);
 	  HAL_Delay(10);
 
 	  if(!(led_cnt % 10))
