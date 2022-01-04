@@ -12,7 +12,7 @@
 #include "common/logger.h"
 #include "common/demonize.h"
 
-#include "stm32_rot_dec.h"
+#include "mojo_rot_dec.h"
 
 static int f_exit = 0;
 
@@ -83,7 +83,7 @@ int main(int argc, char** argv)
         };
 
         /* run */
-        pthread_create(&th, 0, stm32_rot_dec_proc, instance);
+        pthread_create(&th, 0, mojo_rot_dec_proc, instance);
 
         /* start ws */
 //        ws_server_run(instance);
@@ -92,8 +92,9 @@ int main(int argc, char** argv)
         while(!f_exit)
         {
             if(!instance->f_demonize)
-                fprintf(stderr, "| %10d | %10d | %10d |\r",
-                    instance->values[0], instance->values[1], instance->values[2]);
+                fprintf(stderr, "| %10d | %10d | %10d | %10" PRId64 " | %10" PRId64 " |\r",
+                    instance->values[0], instance->values[1], instance->values[2],
+                    instance->recv[0], instance->recv[1]);
 
             usleep(100000);
         };
