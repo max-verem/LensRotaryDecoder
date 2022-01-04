@@ -73,3 +73,5 @@ set_instance_assignment -name IO_STANDARD "3.3V SCHMITT TRIGGER INPUT" -to B2
 set_instance_assignment -name IO_STANDARD "3.3V SCHMITT TRIGGER INPUT" -to B3
 set_instance_assignment -name IO_STANDARD "3.3V SCHMITT TRIGGER INPUT" -to SCL
 set_instance_assignment -name IO_STANDARD "3.3V SCHMITT TRIGGER INPUT" -to SDA
+set_global_assignment -name VERILOG_FILE src/uart_sender.v
+set_location_assignment PIN_8 -to TX
