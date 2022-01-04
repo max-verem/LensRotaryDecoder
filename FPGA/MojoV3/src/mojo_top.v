@@ -21,6 +21,14 @@ module mojo_top
     // AVR ADC channel select
     output [3:0] spi_channel,
 
+	// rotary decoders connection
+	input rot1_a,
+	input rot1_b,
+	input rot2_a,
+	input rot2_b,
+	input rot3_a,
+	input rot3_b,
+
     // Serial connections
     input avr_tx, // AVR Tx => FPGA Rx
     output avr_rx, // AVR Rx <= FPGA Tx
@@ -34,11 +42,6 @@ assign spi_miso = 1'bz;
 
 //assign avr_rx = 1'bz;
 assign spi_channel = 4'bzzzz;
-
-assign led[4] = 1'b0;
-assign led[5] = 1'b0;
-assign led[6] = 1'b0;
-assign led[7] = 1'b0;
 
 // ------------------------------------
 
@@ -65,6 +68,10 @@ uart_tx uart_tx
 
 // ---------------------------------------
 
+reg [23:0] rot1_save;
+reg [23:0] rot2_save;
+reg [23:0] rot3_save;
+
 wire clk_bytes_seq;
 
 clk_div #(.DIV(16)) clk_div_bytes
@@ -83,22 +90,27 @@ begin
 	begin
 		// calc CS
 		if(tx_idx == 0)
+		begin
 			cs = 0;
+			rot1_save <= rot1_cnt;
+			rot2_save <= rot2_cnt;
+			rot3_save <= rot3_cnt;
+		end
 		else
 			cs = cs + tx_data;
 
 		// send service bytes sequence
 		case(tx_idx)
 			0: begin tx_data <= 8'h5A; tx_start <= 1; end	// HEADER
-			1: begin tx_data <= 8'h31; tx_start <= 1; end	// DATAs
-			2: begin tx_data <= 8'h32; tx_start <= 1; end
-			3: begin tx_data <= 8'h33; tx_start <= 1; end
-			4: begin tx_data <= 8'h34; tx_start <= 1; end
-			5: begin tx_data <= 8'h35; tx_start <= 1; end
-			6: begin tx_data <= 8'h36; tx_start <= 1; end
-			7: begin tx_data <= 8'h37; tx_start <= 1; end
-			8: begin tx_data <= 8'h38; tx_start <= 1; end
-			9: begin tx_data <= 8'h39; tx_start <= 1; end
+			1: begin tx_data <= rot1_save[7:0]; 	tx_start <= 1; end	// DATAs
+			2: begin tx_data <= rot1_save[15:8]; 	tx_start <= 1; end
+			3: begin tx_data <= rot1_save[23:16]; 	tx_start <= 1; end
+			4: begin tx_data <= rot2_save[7:0]; 	tx_start <= 1; end
+			5: begin tx_data <= rot2_save[15:8]; 	tx_start <= 1; end
+			6: begin tx_data <= rot2_save[23:16]; 	tx_start <= 1; end
+			7: begin tx_data <= rot3_save[7:0]; 	tx_start <= 1; end
+			8: begin tx_data <= rot3_save[15:8]; 	tx_start <= 1; end
+			9: begin tx_data <= rot3_save[23:16]; 	tx_start <= 1; end
 			10: begin tx_data <= cs; tx_start <= 1; end		// CS
 		endcase
 		
@@ -116,14 +128,58 @@ wire clk_led1;
 assign led[0] = clk_led1;
 assign led[1] = ~clk_led1;
 
-assign led[2] = 1'b0;
-assign led[3] = 1'b0;
-
 clk_div #(.DIV(10000000)) clk_div_led1
 (
 	.clk_in(clk),
    .clk_out(clk_led1)
 );
+
+// ----------------------------------
+
+wire clk_rot_dec;
+
+clk_div #(.DIV(10)) clk_div_rot_dec
+(
+	.clk_in(clk),
+   .clk_out(clk_rot_dec)
+);
+
+wire [23:0] rot1_cnt;
+
+decoder1 #(.BITS(24)) rot1
+(
+	.clk(clk_rot_dec),
+	.phase_a(rot1_a),
+	.phase_b(rot1_b),
+	.cnt(rot1_cnt)
+);
+
+wire [23:0] rot2_cnt;
+
+decoder1 #(.BITS(24)) rot2
+(
+	.clk(clk_rot_dec),
+	.phase_a(rot2_a),
+	.phase_b(rot2_b),
+	.cnt(rot2_cnt)
+);
+
+wire [23:0] rot3_cnt;
+
+decoder1 #(.BITS(24)) rot3
+(
+	.clk(clk_rot_dec),
+	.phase_a(rot3_a),
+	.phase_b(rot3_b),
+	.cnt(rot3_cnt)
+);
+
+assign led[2] = rot1_a;
+assign led[3] = rot1_b;
+assign led[4] = rot2_a;
+assign led[5] = rot2_b;
+assign led[6] = rot3_a;
+assign led[7] = rot3_b;
 
 
 endmodule
