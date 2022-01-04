@@ -75,7 +75,7 @@ int instance_opts(instance_t* instance, int argc, char** argv)
     if(!instance->ws.port)
         instance->ws.port = WS_LISTEN_PORT;
     if(!instance->mojo[0])
-        strlcpy(instance->mojo, "/dev/mojo");
+        strlcpy(instance->mojo, "/dev/mojo", PATH_MAX);
 
     while(1)
     {

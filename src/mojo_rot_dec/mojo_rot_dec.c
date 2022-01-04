@@ -2,12 +2,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <signal.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <errno.h>
 #include <string.h>
-#include <iconv.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
+#include <termios.h>
+#include <fcntl.h>
 
 #include "common/strl.h"
 
@@ -17,12 +20,12 @@
 #include "mojo_rot_dec.h"
 
 #define PACKET_STH      0x5a
-#define PACKET_LEN      10
+#define PACKET_LEN      11
 
 void* mojo_rot_dec_proc(void* p)
 {
     int fd, r, packet_len = 0;
-    instance_t* instance = (instance_t*)
+    instance_t* instance = (instance_t*)p;
     uint8_t packet_buf[PACKET_LEN];
 
     /* serial port & buffer operation */
@@ -33,7 +36,7 @@ void* mojo_rot_dec_proc(void* p)
     /* open serial port */
 open_dev:
     logger_printf(0, "%s: opening [%s]", __FUNCTION__, instance->mojo);
-    fd = open(ctx->instance->serial[ctx->idx], O_RDWR | O_NOCTTY );
+    fd = open(instance->mojo, O_RDWR | O_NOCTTY );
 
     /* check if port opened */
     if(fd < 0)
@@ -72,7 +75,7 @@ open_dev:
     /* discard all data in buffers */
     tcflush(fd, TCIOFLUSH);
 
-    while(!(*ctx->instance->p_exit))
+    while(!(*instance->p_exit))
     {
         /* prepare to check if data present in buffer */
         FD_ZERO (&fds);
@@ -109,6 +112,10 @@ open_dev:
                 instance->recv[0]++;
 
                 /* check packet size and STH */
+                if(packet_len != PACKET_LEN ||  PACKET_STH != packet_buf[0])
+                    continue;
+
+                /* calc checksum */
                 for(cs = 0, r = 0; r < (PACKET_LEN - 1); r++)
                     cs += packet_buf[r];
                 if(packet_buf[PACKET_LEN - 1] != cs)

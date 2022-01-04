@@ -8,6 +8,7 @@ extern "C"
 
 #include <pthread.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <limits.h>
 
 #include "mojo_rot_dec.git.h"
