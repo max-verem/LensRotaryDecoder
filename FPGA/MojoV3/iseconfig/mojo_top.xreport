@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <report-views version="2.0" >
  <header>
-  <DateModified>2022-01-04T11:44:28</DateModified>
+  <DateModified>2022-01-04T11:51:49</DateModified>
   <ModuleName>mojo_top</ModuleName>
   <SummaryTimeStamp>2013-04-16T10:54:27</SummaryTimeStamp>
-  <SavedFilePath>D:/projects/1/mojo-base-project/iseconfig/mojo_top.xreport</SavedFilePath>
-  <ImplementationReportsDirectory>D:/projects/1/mojo-base-project/syn\</ImplementationReportsDirectory>
+  <SavedFilePath>D:/projects/LensRotaryDecoder/FPGA/MojoV3/iseconfig/mojo_top.xreport</SavedFilePath>
+  <ImplementationReportsDirectory>D:/projects/LensRotaryDecoder/FPGA/MojoV3/syn\</ImplementationReportsDirectory>
   <DateInitialized>2012-11-08T12:38:20</DateInitialized>
   <EnableMessageFiltering>false</EnableMessageFiltering>
  </header>
