@@ -122,21 +122,21 @@ open_dev:
                     continue;
 
                 v[0] = 0;
-                v[0] |= packet_buf[1]; v[0] <<= 8;
+                v[0] |= packet_buf[3]; v[0] <<= 8;
                 v[0] |= packet_buf[2]; v[0] <<= 8;
-                v[0] |= packet_buf[3];
+                v[0] |= packet_buf[1];
                 if(v[0] & 0x00800000) v[0] |= 0xFF000000;
 
                 v[1] = 0;
-                v[1] |= packet_buf[4]; v[1] <<= 8;
+                v[1] |= packet_buf[6]; v[1] <<= 8;
                 v[1] |= packet_buf[5]; v[1] <<= 8;
-                v[1] |= packet_buf[6];
+                v[1] |= packet_buf[4];
                 if(v[1] & 0x00800000) v[1] |= 0xFF000000;
 
                 v[2] = 0;
-                v[2] |= packet_buf[7]; v[2] <<= 8;
+                v[2] |= packet_buf[9]; v[2] <<= 8;
                 v[2] |= packet_buf[8]; v[2] <<= 8;
-                v[2] |= packet_buf[9];
+                v[2] |= packet_buf[7];
                 if(v[2] & 0x00800000) v[2] |= 0xFF000000;
 
 
