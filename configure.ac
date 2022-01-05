@@ -108,5 +108,6 @@ po/Makefile.in
 src/Makefile
 src/ez-usb/Makefile
 src/stm32_rot_dec/Makefile
+src/stm32_fpga_uart/Makefile
 src/mojo_rot_dec/Makefile
 ])

@@ -8,6 +8,10 @@ src/stm32_rot_dec/stm32_rot_dec.git.h
 src/mojo_rot_dec/mojo_rot_dec
 src/mojo_rot_dec/mojo_rot_dec.git.h
 
+src/stm32_fpga_uart/stm32_fpga_uart
+src/stm32_fpga_uart/stm32_fpga_uart.git.h
+
+
 # Prerequisites
 *.d
 
