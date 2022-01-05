@@ -206,6 +206,7 @@ applicable agreement for further details.
 		(line (pt 82 8)(pt 78 12))
 		(line (pt 78 12)(pt 82 8))
 	)
+	(annotation_block (location)(rect 1192 312 1240 328))
 )
 (pin
 	(bidir)
@@ -241,7 +242,7 @@ applicable agreement for further details.
 		(pt 176 32)
 		(output)
 		(text "clk_out[0..0]" (rect 0 0 61 12)(font "Arial" ))
-		(text "clk_out[0..0]" (rect 104 27 155 39)(font "Arial" ))
+		(text "clk_out[0..0]" (rect 104 27 165 39)(font "Arial" ))
 		(line (pt 176 32)(pt 160 32)(line_width 3))
 	)
 	(parameter
@@ -276,7 +277,7 @@ applicable agreement for further details.
 		(pt 248 48)
 		(output)
 		(text "GPIO_output[n-1..0]" (rect 0 0 99 12)(font "Arial" ))
-		(text "GPIO_output[n-1..0]" (rect 144 43 227 55)(font "Arial" ))
+		(text "GPIO_output[n-1..0]" (rect 144 43 243 55)(font "Arial" ))
 		(line (pt 248 48)(pt 232 48)(line_width 3))
 	)
 	(port
@@ -323,7 +324,7 @@ applicable agreement for further details.
 		(pt 248 48)
 		(output)
 		(text "GPIO_output[n-1..0]" (rect 0 0 99 12)(font "Arial" ))
-		(text "GPIO_output[n-1..0]" (rect 144 43 227 55)(font "Arial" ))
+		(text "GPIO_output[n-1..0]" (rect 144 43 243 55)(font "Arial" ))
 		(line (pt 248 48)(pt 232 48)(line_width 3))
 	)
 	(port
@@ -370,7 +371,7 @@ applicable agreement for further details.
 		(pt 248 48)
 		(output)
 		(text "GPIO_output[n-1..0]" (rect 0 0 99 12)(font "Arial" ))
-		(text "GPIO_output[n-1..0]" (rect 144 43 227 55)(font "Arial" ))
+		(text "GPIO_output[n-1..0]" (rect 144 43 243 55)(font "Arial" ))
 		(line (pt 248 48)(pt 232 48)(line_width 3))
 	)
 	(port
@@ -424,7 +425,7 @@ applicable agreement for further details.
 		(pt 192 32)
 		(output)
 		(text "cnt[BITS-1..0]" (rect 0 0 68 12)(font "Arial" ))
-		(text "cnt[BITS-1..0]" (rect 114 27 171 39)(font "Arial" ))
+		(text "cnt[BITS-1..0]" (rect 114 27 182 39)(font "Arial" ))
 		(line (pt 192 32)(pt 176 32)(line_width 3))
 	)
 	(parameter
@@ -466,7 +467,7 @@ applicable agreement for further details.
 		(pt 192 32)
 		(output)
 		(text "cnt[BITS-1..0]" (rect 0 0 68 12)(font "Arial" ))
-		(text "cnt[BITS-1..0]" (rect 114 27 171 39)(font "Arial" ))
+		(text "cnt[BITS-1..0]" (rect 114 27 182 39)(font "Arial" ))
 		(line (pt 192 32)(pt 176 32)(line_width 3))
 	)
 	(parameter
@@ -508,7 +509,7 @@ applicable agreement for further details.
 		(pt 192 32)
 		(output)
 		(text "cnt[BITS-1..0]" (rect 0 0 68 12)(font "Arial" ))
-		(text "cnt[BITS-1..0]" (rect 114 27 171 39)(font "Arial" ))
+		(text "cnt[BITS-1..0]" (rect 114 27 182 39)(font "Arial" ))
 		(line (pt 192 32)(pt 176 32)(line_width 3))
 	)
 	(parameter
@@ -550,7 +551,7 @@ applicable agreement for further details.
 		(pt 184 32)
 		(output)
 		(text "dst[7..0]" (rect 0 0 41 12)(font "Arial" ))
-		(text "dst[7..0]" (rect 129 27 163 39)(font "Arial" ))
+		(text "dst[7..0]" (rect 129 27 170 39)(font "Arial" ))
 		(line (pt 184 32)(pt 168 32)(line_width 3))
 	)
 	(parameter
@@ -592,7 +593,7 @@ applicable agreement for further details.
 		(pt 184 32)
 		(output)
 		(text "dst[7..0]" (rect 0 0 41 12)(font "Arial" ))
-		(text "dst[7..0]" (rect 129 27 163 39)(font "Arial" ))
+		(text "dst[7..0]" (rect 129 27 170 39)(font "Arial" ))
 		(line (pt 184 32)(pt 168 32)(line_width 3))
 	)
 	(parameter
@@ -634,7 +635,7 @@ applicable agreement for further details.
 		(pt 184 32)
 		(output)
 		(text "dst[7..0]" (rect 0 0 41 12)(font "Arial" ))
-		(text "dst[7..0]" (rect 129 27 163 39)(font "Arial" ))
+		(text "dst[7..0]" (rect 129 27 170 39)(font "Arial" ))
 		(line (pt 184 32)(pt 168 32)(line_width 3))
 	)
 	(parameter
@@ -662,7 +663,7 @@ applicable agreement for further details.
 		(pt 176 32)
 		(output)
 		(text "clk_out[0..0]" (rect 0 0 61 12)(font "Arial" ))
-		(text "clk_out[0..0]" (rect 104 27 155 39)(font "Arial" ))
+		(text "clk_out[0..0]" (rect 104 27 165 39)(font "Arial" ))
 		(line (pt 176 32)(pt 160 32)(line_width 3))
 	)
 	(parameter
@@ -690,7 +691,7 @@ applicable agreement for further details.
 		(pt 176 32)
 		(output)
 		(text "clk_out[0..0]" (rect 0 0 61 12)(font "Arial" ))
-		(text "clk_out[0..0]" (rect 104 27 155 39)(font "Arial" ))
+		(text "clk_out[0..0]" (rect 104 27 165 39)(font "Arial" ))
 		(line (pt 176 32)(pt 160 32)(line_width 3))
 	)
 	(parameter
@@ -810,37 +811,9 @@ applicable agreement for further details.
 	(annotation_block (parameter)(rect 432 248 616 280))
 )
 (symbol
-	(rect -104 200 72 280)
-	(text "clk_div" (rect 5 0 40 12)(font "Arial" ))
-	(text "DIV_BAUD" (rect 8 64 63 76)(font "Arial" ))
-	(port
-		(pt 0 32)
-		(input)
-		(text "clk_in" (rect 0 0 28 12)(font "Arial" ))
-		(text "clk_in" (rect 21 27 49 39)(font "Arial" ))
-		(line (pt 0 32)(pt 16 32))
-	)
-	(port
-		(pt 176 32)
-		(output)
-		(text "clk_out[0..0]" (rect 0 0 61 12)(font "Arial" ))
-		(text "clk_out[0..0]" (rect 104 27 165 39)(font "Arial" ))
-		(line (pt 176 32)(pt 160 32)(line_width 3))
-	)
-	(parameter
-		"DIV"
-		"1"
-		""
-		(type "PARAMETER_SIGNED_DEC")	)
-	(drawing
-		(rectangle (rect 16 16 160 64))
-	)
-	(annotation_block (parameter)(rect 72 168 256 200))
-)
-(symbol
 	(rect -104 336 72 416)
 	(text "clk_div" (rect 5 0 40 12)(font "Arial" ))
-	(text "inst13" (rect 8 64 37 76)(font "Arial" ))
+	(text "DIV_BYTE" (rect 8 64 61 76)(font "Arial" ))
 	(port
 		(pt 0 32)
 		(input)
@@ -864,6 +837,34 @@ applicable agreement for further details.
 		(rectangle (rect 16 16 160 64))
 	)
 	(annotation_block (parameter)(rect 72 304 254 332))
+)
+(symbol
+	(rect -104 200 72 280)
+	(text "clk_div" (rect 5 0 40 12)(font "Arial" ))
+	(text "DIV_BAUD" (rect 8 64 63 76)(font "Arial" ))
+	(port
+		(pt 0 32)
+		(input)
+		(text "clk_in" (rect 0 0 28 12)(font "Arial" ))
+		(text "clk_in" (rect 21 27 49 39)(font "Arial" ))
+		(line (pt 0 32)(pt 16 32))
+	)
+	(port
+		(pt 176 32)
+		(output)
+		(text "clk_out[0..0]" (rect 0 0 61 12)(font "Arial" ))
+		(text "clk_out[0..0]" (rect 104 27 165 39)(font "Arial" ))
+		(line (pt 176 32)(pt 160 32)(line_width 3))
+	)
+	(parameter
+		"DIV"
+		"200"
+		""
+		(type "PARAMETER_SIGNED_DEC")	)
+	(drawing
+		(rectangle (rect 16 16 160 64))
+	)
+	(annotation_block (parameter)(rect 80 168 262 196))
 )
 (connector
 	(pt 40 -320)
