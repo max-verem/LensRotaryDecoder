@@ -56,7 +56,10 @@ void SVC_Handler(void);
 void DebugMon_Handler(void);
 void PendSV_Handler(void);
 void SysTick_Handler(void);
+void RCC_IRQHandler(void);
+void DMA1_Stream2_IRQHandler(void);
 void EXTI9_5_IRQHandler(void);
+void TIM3_IRQHandler(void);
 void OTG_FS_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 
@@ -67,5 +70,3 @@ void OTG_FS_IRQHandler(void);
 #endif
 
 #endif /* __STM32F4xx_IT_H */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
