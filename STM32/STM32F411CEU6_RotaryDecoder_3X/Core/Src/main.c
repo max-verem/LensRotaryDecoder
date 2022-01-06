@@ -230,6 +230,21 @@ int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
 	return (USBD_OK);
 };
 
+#define DMA_BUF_SIZE 512
+uint32_t dma_buf_size = DMA_BUF_SIZE;
+uint8_t dma_buf_data[DMA_BUF_SIZE];
+
+static void dma_cb_half(DMA_HandleTypeDef *hdma)
+{
+	instance.s2++;
+}
+
+static void dma_cb_full(DMA_HandleTypeDef *hdma)
+{
+	instance.s1++;
+}
+
+
 #define BUF1_SIZE	1024
 uint8_t buf1[BUF1_SIZE];
 /* USER CODE END 0 */
@@ -249,8 +264,38 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-    for(int j = 0; j < 1024; j++)
-    	buf1[j] = j;
+    for(int j = 0; j < BUF1_SIZE; j += 8)
+    {
+    	const static uint8_t cs[8] =
+    	{
+   			1,  // 01
+   			0,  // 00
+   			0,  // 00
+   			2,  // 10
+   			2,  // 10
+   			3,  // 11
+   			3,  // 11
+   			1,  // 01
+    	};
+
+    	const static uint8_t ccs[8] =
+    	{
+   			2,  // 10
+   			0,  // 00
+   			0,  // 00
+   			1,  // 01
+   			1,  // 01
+   			3,  // 11
+   			3,  // 11
+   			2,  // 10
+    	};
+
+    	for(int k = 0; k < 8; k ++)
+    		buf1[j + k] =
+    			cs[k] << ROT1_SHIFT |
+				ccs[k] << ROT2_SHIFT |
+				cs[k] << ROT3_SHIFT;
+    }
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -266,6 +311,16 @@ int main(void)
   MX_DMA_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  /*
+   * htim3.hdma[TIM_DMA_ID_UPDATE] or hdma_tim3_ch1_trig ?
+   *
+   */
+  HAL_DMA_RegisterCallback(htim3.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_CPLT_CB_ID, dma_cb_full);
+  HAL_DMA_RegisterCallback(htim3.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_HALFCPLT_CB_ID, dma_cb_half);
+  HAL_DMA_Start_IT(htim3.hdma[TIM_DMA_ID_UPDATE], (uint32_t)&GPIOA->IDR, (uint32_t)dma_buf_data, dma_buf_size);
+  //  ?
+  __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_UPDATE);
+  __HAL_TIM_ENABLE(&htim3);
 
   /* USER CODE END 2 */
 
@@ -347,15 +402,14 @@ static void MX_TIM3_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_IC_InitTypeDef sConfigIC = {0};
 
   /* USER CODE BEGIN TIM3_Init 1 */
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
+  htim3.Init.Prescaler = 96;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 65535;
+  htim3.Init.Period = 10;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -367,21 +421,9 @@ static void MX_TIM3_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_IC_Init(&htim3) != HAL_OK)
-  {
-    Error_Handler();
-  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
-  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
-  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
-  sConfigIC.ICFilter = 0;
-  if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
   }
@@ -420,7 +462,6 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
