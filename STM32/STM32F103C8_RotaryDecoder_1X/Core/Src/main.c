@@ -165,16 +165,19 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  uint8_t buf[4];
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  uint8_t buf[8];
+
 	  buf[0] = instance.s1;
 	  buf[1] = instance.s2;
-	  buf[3] = instance.value >> 0;
-	  buf[2] = instance.value >> 8;
+	  buf[2] = instance.value >> 24;
+	  buf[3] = instance.value >> 16;
+	  buf[4] = instance.value >>  8;
+	  buf[5] = instance.value >>  0;
 
-	  USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 4);  //run as USB mouse
+	  USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 6);
 	  HAL_Delay(10);
 
 	  if(!(led_cnt % 10))
