@@ -107,7 +107,8 @@ Makefile
 po/Makefile.in
 src/Makefile
 src/ez-usb/Makefile
-src/stm32_rot_dec/Makefile
+src/stm32_rot_dec_1x3/Makefile
+src/stm32_rot_dec_3x1/Makefile
 src/stm32_fpga_uart/Makefile
 src/mojo_rot_dec/Makefile
 ])
