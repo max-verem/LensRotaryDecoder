@@ -65,6 +65,7 @@ static struct
 {
 	uint8_t s1, s2, rot;
 	int32_t value;
+	int32_t values[3];
 } instance;
 
 int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
@@ -135,6 +136,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	instance.value += r[ instance.rot & 0x0F ];
 };
 
+#define BUF1_SIZE	1024
+uint8_t buf1[BUF1_SIZE];
+uint16_t buf1_prev;
 /* USER CODE END 0 */
 
 /**
@@ -153,7 +157,8 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+    for(int j = 0; j < 1024; j++)
+    	buf1[j] = j;
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -179,7 +184,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-#if 1
+#if 0
 	  uint8_t buf[8];
 
 	  buf[0] = instance.s1;
@@ -196,10 +201,107 @@ int main(void)
 		  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 	  led_cnt++;
 #else	// performance test mode
-	  int i, s;
+	  // toggle led
 	  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+	  /* test sequence send */
+	  uint8_t buf[8];
+	  buf[0] = instance.s1;
+	  buf[1] = instance.s2;
+	  buf[2] = instance.value >> 24;
+	  buf[3] = instance.value >> 16;
+	  buf[4] = instance.value >>  8;
+	  buf[5] = instance.value >>  0;
+	  USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 6);
+#if 0
+	  int i, s;
 	  for(s = 0, i = 0; i < 8000000; i++)
 		  s += GPIOB->IDR;
+#else
+	  int j, i;
+	  for(j = 0; j < 8000; j++)
+	  {
+		  int32_t a = 0, b = 0, c = 0;
+		  for(i = 0; i < BUF1_SIZE; i++)
+		  {
+			  buf1_prev <<= 8;
+			  buf1_prev |= buf1[i];
+
+			  // counter 1
+			  switch(buf1_prev & 0x0303)
+			  {
+ /*
+			   * CW
+			   *
+			   * 00	10 | ______00	______10
+			   * 01	00 | ______01	______00
+			   * 10	11 | ______10	______11
+			   * 11	01 | ______11	______01
+			   *
+*/
+			  	  case 0x0002:
+			  	  case 0x0100:
+			  	  case 0x0203:
+			  	  case 0x0301:
+			  		  a++;
+			  		  break;
+/*
+			   * CCW
+			   *
+			   * 00	01 | ______00	______01
+			   * 01	11 | ______01	______11
+			   * 10	00 | ______10	______00
+			   * 11	10 | ______11	______10
+*/
+			  	  case 0x0001:
+			  	  case 0x0103:
+			  	  case 0x0200:
+			  	  case 0x0302:
+			  		  a--;
+			  		  break;
+			  }
+#if 0
+			  // counter 2
+			  switch(buf1_prev & (0x0303 << 2))
+			  {
+			  	  case 0x0002 << 2:
+			  	  case 0x0100 << 2:
+			  	  case 0x0203 << 2:
+			  	  case 0x0301 << 2:
+			  		  b++;
+			  		  break;
+			  	  case 0x0001 << 2:
+			  	  case 0x0103 << 2:
+			  	  case 0x0200 << 2:
+			  	  case 0x0302 << 2:
+			  		  b--;
+			  		  break;
+			  }
+#endif
+#if 0
+			  // counter 3
+			  switch(buf1_prev & (0x0303 << 4))
+			  {
+			  	  case 0x0002 << 4:
+			  	  case 0x0100 << 4:
+			  	  case 0x0203 << 4:
+			  	  case 0x0301 << 4:
+			  		  c++;
+			  		  break;
+			  	  case 0x0001 << 4:
+			  	  case 0x0103 << 4:
+			  	  case 0x0200 << 4:
+			  	  case 0x0302 << 4:
+			  		  c--;
+			  		  break;
+			  }
+#endif
+		  }
+
+		  instance.values[0] += a;
+		  instance.values[1] += b;
+		  instance.values[2] += c;
+	  }
+#endif
 #endif
   }
   /* USER CODE END 3 */
