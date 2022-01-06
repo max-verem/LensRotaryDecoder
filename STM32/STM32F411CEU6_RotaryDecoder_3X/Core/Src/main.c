@@ -63,82 +63,175 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 
 static struct
 {
-	uint8_t s1, s2, rot;
-	int32_t value;
-	int32_t values[3];
+	uint8_t s1, s2;
+	int32_t value0, value1, value2;
+	uint16_t prev;
 } instance;
+
+static inline void instance_to_hid()
+{
+	uint8_t buf[32];
+
+	buf[0] = instance.s1;
+	buf[1] = instance.s2;
+
+	buf[2] = instance.value0 >> 24;
+	buf[3] = instance.value0 >> 16;
+	buf[4] = instance.value0 >>  8;
+    buf[5] = instance.value0 >>  0;
+
+	buf[6] = instance.value1 >> 24;
+	buf[7] = instance.value1 >> 16;
+	buf[8] = instance.value1 >>  8;
+	buf[9] = instance.value1 >>  0;
+
+	buf[10] = instance.value2 >> 24;
+	buf[11] = instance.value2 >> 16;
+	buf[12] = instance.value2 >>  8;
+	buf[13] = instance.value2 >>  0;
+
+	USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 14);
+}
+
+static inline void rotary_dec_buf(uint8_t *buf, int len)
+{
+	int i;
+    int32_t a = 0, b = 0, c = 0;
+
+#define ROT1_SHIFT 1	/* PA1, PA2 */
+#define ROT2_SHIFT 3	/* PA3, PA4 */
+#define ROT3_SHIFT 5	/* PA5, PA6 */
+
+	for(i = 0; i < len; i++)
+	{
+	    instance.prev <<= 8;
+	    instance.prev |= buf[i];
+
+		// counter 1
+#ifdef ROT1_SHIFT
+		switch(instance.prev & (0x0303 << ROT1_SHIFT))
+		{
+/*
+* CW
+*
+* 00	10 | ______00	______10
+* 01	00 | ______01	______00
+* 10	11 | ______10	______11
+* 11	01 | ______11	______01
+*
+*/
+		    case 0x0002 << ROT1_SHIFT:
+		  	case 0x0100 << ROT1_SHIFT:
+		  	case 0x0203 << ROT1_SHIFT:
+		  	case 0x0301 << ROT1_SHIFT:
+		  		a++;
+		  	    break;
+/*
+* CCW
+*
+* 00	01 | ______00	______01
+* 01	11 | ______01	______11
+* 10	00 | ______10	______00
+* 11	10 | ______11	______10
+*/
+		  	case 0x0001 << ROT1_SHIFT:
+		  	case 0x0103 << ROT1_SHIFT:
+		  	case 0x0200 << ROT1_SHIFT:
+		  	case 0x0302 << ROT1_SHIFT:
+		  	    a--;
+		  		break;
+		  }
+#endif
+
+		// counter 2
+#ifdef ROT2_SHIFT
+		switch(instance.prev & (0x0303 << ROT2_SHIFT))
+		{
+/*
+* CW
+*
+* 00	10 | ______00	______10
+* 01	00 | ______01	______00
+* 10	11 | ______10	______11
+* 11	01 | ______11	______01
+*
+*/
+		    case 0x0002 << ROT2_SHIFT:
+		  	case 0x0100 << ROT2_SHIFT:
+		  	case 0x0203 << ROT2_SHIFT:
+		  	case 0x0301 << ROT2_SHIFT:
+		  		b++;
+		  	    break;
+/*
+* CCW
+*
+* 00	01 | ______00	______01
+* 01	11 | ______01	______11
+* 10	00 | ______10	______00
+* 11	10 | ______11	______10
+*/
+		  	case 0x0001 << ROT2_SHIFT:
+		  	case 0x0103 << ROT2_SHIFT:
+		  	case 0x0200 << ROT2_SHIFT:
+		  	case 0x0302 << ROT2_SHIFT:
+		  	    b--;
+		  		break;
+		  }
+#endif
+
+		// counter 3
+#ifdef ROT3_SHIFT
+		switch(instance.prev & (0x0303 << ROT3_SHIFT))
+		{
+/*
+* CW
+*
+* 00	10 | ______00	______10
+* 01	00 | ______01	______00
+* 10	11 | ______10	______11
+* 11	01 | ______11	______01
+*
+*/
+		    case 0x0002 << ROT3_SHIFT:
+		  	case 0x0100 << ROT3_SHIFT:
+		  	case 0x0203 << ROT3_SHIFT:
+		  	case 0x0301 << ROT3_SHIFT:
+		  		c++;
+		  	    break;
+/*
+* CCW
+*
+* 00	01 | ______00	______01
+* 01	11 | ______01	______11
+* 10	00 | ______10	______00
+* 11	10 | ______11	______10
+*/
+		  	case 0x0001 << ROT3_SHIFT:
+		  	case 0x0103 << ROT3_SHIFT:
+		  	case 0x0200 << ROT3_SHIFT:
+		  	case 0x0302 << ROT3_SHIFT:
+		  	    c--;
+		  		break;
+		  }
+#endif
+
+	  }
+
+	  instance.value0 += a;
+	  instance.value1 += b;
+	  instance.value2 += c;
+}
 
 int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
 {
 	instance.s1 = buf[0];
 	instance.s2 = buf[1];
 
-	instance.value = buf[2];
-	instance.value <<= 8;
-	instance.value |= buf[3];
-	instance.value <<= 8;
-	instance.value |= buf[4];
-	instance.value <<= 8;
-	instance.value |= buf[5];
-
 	return (USBD_OK);
-};
-
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-	if(GPIO_Pin != GPIO_PIN_9 && GPIO_Pin != GPIO_PIN_8)
-		return;
-
-/*
- * CW
- *
- * 00	10
- * 01	00
- * 10	11
- * 11	01
- *
- * CCW
- *
- * 00	01
- * 01	11
- * 10	00
- * 11	10
- *
- * MAP
- *
- * 00	00	 0
- * 00	01	-1
- * 00	10	+1
- * 00	11	 0
- * 01	00	+1
- * 01	01	 0
- * 01	10	 0
- * 01	11	-1
- * 10	00	-1
- * 10	01	 0
- * 10	10	 0
- * 10	11	+1
- * 11	00	 0
- * 11	01	+1
- * 11	10	-1
- * 11	11	 0
- *
- */
-
-	static const int8_t r[16] = { 0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0 };
-
-
-	instance.rot <<= 1;
-	instance.rot |= HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8);
-	instance.rot <<= 1;
-	instance.rot |= HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9);
-
-	instance.value += r[ instance.rot & 0x0F ];
 };
 
 #define BUF1_SIZE	1024
 uint8_t buf1[BUF1_SIZE];
-uint16_t buf1_prev;
 /* USER CODE END 0 */
 
 /**
@@ -148,7 +241,6 @@ uint16_t buf1_prev;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	int led_cnt = 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -184,125 +276,16 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-#if 0
-	  uint8_t buf[8];
-
-	  buf[0] = instance.s1;
-	  buf[1] = instance.s2;
-	  buf[2] = instance.value >> 24;
-	  buf[3] = instance.value >> 16;
-	  buf[4] = instance.value >>  8;
-	  buf[5] = instance.value >>  0;
-
-	  USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 6);
-	  HAL_Delay(10);
-
-	  if(!(led_cnt % 10))
-		  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-	  led_cnt++;
-#else	// performance test mode
 	  // toggle led
 	  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+
 	  /* test sequence send */
-	  uint8_t buf[8];
-	  buf[0] = instance.s1;
-	  buf[1] = instance.s2;
-	  buf[2] = instance.value >> 24;
-	  buf[3] = instance.value >> 16;
-	  buf[4] = instance.value >>  8;
-	  buf[5] = instance.value >>  0;
-	  USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 6);
-#if 0
-	  int i, s;
-	  for(s = 0, i = 0; i < 8000000; i++)
-		  s += GPIOB->IDR;
-#else
-	  int j, i;
-	  for(j = 0; j < 8000; j++)
-	  {
-		  int32_t a = 0, b = 0, c = 0;
-		  for(i = 0; i < BUF1_SIZE; i++)
-		  {
-			  buf1_prev <<= 8;
-			  buf1_prev |= buf1[i];
+	  instance_to_hid();
 
-			  // counter 1
-			  switch(buf1_prev & 0x0303)
-			  {
- /*
-			   * CW
-			   *
-			   * 00	10 | ______00	______10
-			   * 01	00 | ______01	______00
-			   * 10	11 | ______10	______11
-			   * 11	01 | ______11	______01
-			   *
-*/
-			  	  case 0x0002:
-			  	  case 0x0100:
-			  	  case 0x0203:
-			  	  case 0x0301:
-			  		  a++;
-			  		  break;
-/*
-			   * CCW
-			   *
-			   * 00	01 | ______00	______01
-			   * 01	11 | ______01	______11
-			   * 10	00 | ______10	______00
-			   * 11	10 | ______11	______10
-*/
-			  	  case 0x0001:
-			  	  case 0x0103:
-			  	  case 0x0200:
-			  	  case 0x0302:
-			  		  a--;
-			  		  break;
-			  }
-#if 0
-			  // counter 2
-			  switch(buf1_prev & (0x0303 << 2))
-			  {
-			  	  case 0x0002 << 2:
-			  	  case 0x0100 << 2:
-			  	  case 0x0203 << 2:
-			  	  case 0x0301 << 2:
-			  		  b++;
-			  		  break;
-			  	  case 0x0001 << 2:
-			  	  case 0x0103 << 2:
-			  	  case 0x0200 << 2:
-			  	  case 0x0302 << 2:
-			  		  b--;
-			  		  break;
-			  }
-#endif
-#if 0
-			  // counter 3
-			  switch(buf1_prev & (0x0303 << 4))
-			  {
-			  	  case 0x0002 << 4:
-			  	  case 0x0100 << 4:
-			  	  case 0x0203 << 4:
-			  	  case 0x0301 << 4:
-			  		  c++;
-			  		  break;
-			  	  case 0x0001 << 4:
-			  	  case 0x0103 << 4:
-			  	  case 0x0200 << 4:
-			  	  case 0x0302 << 4:
-			  		  c--;
-			  		  break;
-			  }
-#endif
-		  }
-
-		  instance.values[0] += a;
-		  instance.values[1] += b;
-		  instance.values[2] += c;
-	  }
-#endif
-#endif
+	  /* test processing */
+	  int i;
+	  for(i = 0; i < 8000; i++)
+		  rotary_dec_buf(buf1, BUF1_SIZE);
   }
   /* USER CODE END 3 */
 }
@@ -456,16 +439,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PB8 PB9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-  GPIO_InitStruct.Pull = GPIO_PULLUP; //GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 }
 
