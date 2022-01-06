@@ -105,9 +105,6 @@ int instance_usage(instance_t* instance)
         "    "PRODUCT_NAME" [args]\n"
         "Where args:\n"
         "    --ws-port=<N>                          websocket port\n"
-        "    --serial-zoom=<STR>                    serial number of ZOOM usb dongle\n"
-        "    --serial-focus=<STR>                   serial number of FOCUS usb dongle\n"
-        "    --serial-iris=<STR>                    serial number of IRIS usb dongle\n"
         DEFAULT_INSTANCE_USAGE
     );
 

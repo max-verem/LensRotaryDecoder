@@ -2,8 +2,11 @@ src/ez-usb/ez_usb_rot_dec.git.h
 src/ez-usb/ez_usb_rot_dec.log*
 src/ez-usb/ez_usb_rot_dec
 
-src/stm32_rot_dec/stm32_rot_dec
-src/stm32_rot_dec/stm32_rot_dec.git.h
+src/stm32_rot_dec_1x3/stm32_rot_dec_1x3
+src/stm32_rot_dec_1x3/stm32_rot_dec_1x3.git.h
+
+src/stm32_rot_dec_3x1/stm32_rot_dec_3x1
+src/stm32_rot_dec_3x1/stm32_rot_dec_3x1.git.h
 
 src/mojo_rot_dec/mojo_rot_dec
 src/mojo_rot_dec/mojo_rot_dec.git.h

@@ -16,7 +16,7 @@
 #include "instance.h"
 #include "common/logger.h"
 
-#include "stm32_rot_dec.h"
+#include "stm32_rot_dec_3x1.h"
 
 #define VID 0x05df
 #define PID 0x16c0
@@ -85,7 +85,7 @@ void* stm32_rot_dec_proc(void* p)
             /* convert serial */
             wchar_to_char(cur_dev->serial_number, str, sizeof(str));
 
-            logger_printf(0, "%s: found device [%s] with serial [%s] {%d}", __FUNCTION__, cur_dev->path, str, idx);
+            logger_printf(0, "%s: found device [%s] with serial [%s]", __FUNCTION__, cur_dev->path, str);
 
             /* try to open */
             handle = hid_open_path(cur_dev->path);
@@ -103,8 +103,8 @@ void* stm32_rot_dec_proc(void* p)
         if(!handle)
         {
             if(instance->f_debug)
-                logger_printf(1, "%s: usb device VID=0x%04X, PID=0x%04X, serial=[%s] not found",
-                    __FUNCTION__, vendor_id, product_id, serial);
+                logger_printf(1, "%s: usb device VID=0x%04X, PID=0x%04X",
+                    __FUNCTION__, vendor_id, product_id);
             for(res = 0; res < 5000 && !(*instance->p_exit); res++)
                 usleep(1000);
             continue;
@@ -136,20 +136,38 @@ void* stm32_rot_dec_proc(void* p)
             res = hid_read(handle, recv, sizeof(recv));
             if (res == 0)
                 usleep(1000);
-            else if(res > 0 && (recv[0] != buf[0] || recv[1] != buf[1] || recv[2] != buf[2] || recv[3] != buf[3] || recv[4] != buf[4] || recv[5] != buf[5]))
+            else if(res > 0)
             {
-                int v = 0;
+                int v0 = 0, v1 = 0, v2 = 0;
 
-                v |= recv[2];
-                v <<= 8;
-                v |= recv[3];
-                v <<= 8;
-                v |= recv[4];
-                v <<= 8;
-                v |= recv[5];
+                v0 |= recv[2];
+                v0 <<= 8;
+                v0 |= recv[3];
+                v0 <<= 8;
+                v0 |= recv[4];
+                v0 <<= 8;
+                v0 |= recv[5];
+
+                v1 |= recv[6];
+                v1 <<= 8;
+                v1 |= recv[7];
+                v1 <<= 8;
+                v1 |= recv[8];
+                v1 <<= 8;
+                v1 |= recv[9];
+
+                v2 |= recv[10];
+                v2 <<= 8;
+                v2 |= recv[11];
+                v2 <<= 8;
+                v2 |= recv[12];
+                v2 <<= 8;
+                v2 |= recv[13];
 
                 pthread_mutex_lock(&instance->lock);
-                instance->values[lp] = v;
+                instance->values[0] = v0;
+                instance->values[1] = v1;
+                instance->values[2] = v2;
                 pthread_mutex_unlock(&instance->lock);
 
                 memcpy(buf, recv, MAX_BUF_READ);
