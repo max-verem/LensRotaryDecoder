@@ -63,11 +63,11 @@
   * @{
   */
 
-#define USBD_VID     1204
+#define USBD_VID     0x05df
 #define USBD_LANGID_STRING     1033
-#define USBD_MANUFACTURER_STRING     "MaksymVeremeyenko"
-#define USBD_PID_FS     32849
-#define USBD_PRODUCT_STRING_FS     "Lens Rotary Decoder"
+#define USBD_MANUFACTURER_STRING     "Maksym Veremeyenko"
+#define USBD_PID_FS     0x16c0
+#define USBD_PRODUCT_STRING_FS     "Lens Rotary Decoder 1X / https://github.com/max-verem/LensRotaryDecoder"
 #define USBD_CONFIGURATION_STRING_FS     "Custom HID Config"
 #define USBD_INTERFACE_STRING_FS     "Custom HID Interface"
 
