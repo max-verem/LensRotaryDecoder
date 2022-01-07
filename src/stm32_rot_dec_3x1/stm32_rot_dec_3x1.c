@@ -140,6 +140,13 @@ void* stm32_rot_dec_proc(void* p)
             {
                 int v0 = 0, v1 = 0, v2 = 0;
 
+                if(instance->f_debug)
+                    logger_printf(1, "%s: [%4d] | %02x %02x | %02x %02x %02x %02x | %02x %02x %02x %02x | %02x %02x %02x %02x |",
+                        __FUNCTION__, res, recv[0], recv[1],
+                        recv[2], recv[3], recv[4], recv[5],
+                        recv[6], recv[7], recv[8], recv[9],
+                        recv[10], recv[11], recv[12], recv[13]);
+
                 v0 |= recv[2];
                 v0 <<= 8;
                 v0 |= recv[3];
@@ -168,6 +175,8 @@ void* stm32_rot_dec_proc(void* p)
                 instance->values[0] = v0;
                 instance->values[1] = v1;
                 instance->values[2] = v2;
+                instance->stat[0] = recv[0];
+                instance->stat[1] = recv[1];
                 pthread_mutex_unlock(&instance->lock);
 
                 memcpy(buf, recv, MAX_BUF_READ);
