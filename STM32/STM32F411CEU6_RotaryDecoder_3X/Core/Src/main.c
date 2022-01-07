@@ -41,8 +41,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-TIM_HandleTypeDef htim3;
-DMA_HandleTypeDef hdma_tim3_ch4_up;
+TIM_HandleTypeDef htim1;
+DMA_HandleTypeDef hdma_tim1_up;
 
 /* USER CODE BEGIN PV */
 
@@ -52,7 +52,7 @@ DMA_HandleTypeDef hdma_tim3_ch4_up;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
-static void MX_TIM3_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -63,82 +63,202 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 
 static struct
 {
-	uint8_t s1, s2, rot;
-	int32_t value;
-	int32_t values[3];
+	uint8_t s1, s2;
+	int32_t value0, value1, value2;
+	uint16_t prev;
 } instance;
+
+static inline void instance_to_hid()
+{
+	uint8_t buf[32];
+
+#if 0
+	buf[0] = HAL_DMA_GetState(&hdma_tim3_ch4_up);
+	buf[1] = HAL_DMA_GetError(&hdma_tim3_ch4_up);
+#else
+	buf[0] = instance.s1;
+	buf[1] = instance.s2;
+#endif
+	buf[2] = instance.value0 >> 24;
+	buf[3] = instance.value0 >> 16;
+	buf[4] = instance.value0 >>  8;
+    buf[5] = instance.value0 >>  0;
+
+	buf[6] = instance.value1 >> 24;
+	buf[7] = instance.value1 >> 16;
+	buf[8] = instance.value1 >>  8;
+	buf[9] = instance.value1 >>  0;
+
+	buf[10] = instance.value2 >> 24;
+	buf[11] = instance.value2 >> 16;
+	buf[12] = instance.value2 >>  8;
+	buf[13] = instance.value2 >>  0;
+
+	USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 14);
+}
+
+static inline void rotary_dec_buf(uint8_t *buf, int len)
+{
+	int i;
+    int32_t a = 0, b = 0, c = 0;
+
+#define ROT1_SHIFT 1	/* PA1, PA2 */
+#define ROT2_SHIFT 3	/* PA3, PA4 */
+#define ROT3_SHIFT 5	/* PA5, PA6 */
+
+	for(i = 0; i < len; i++)
+	{
+	    instance.prev <<= 8;
+	    instance.prev |= buf[i];
+
+		// counter 1
+#ifdef ROT1_SHIFT
+		switch(instance.prev & (0x0303 << ROT1_SHIFT))
+		{
+/*
+* CW
+*
+* 00	10 | ______00	______10
+* 01	00 | ______01	______00
+* 10	11 | ______10	______11
+* 11	01 | ______11	______01
+*
+*/
+		    case 0x0002 << ROT1_SHIFT:
+		  	case 0x0100 << ROT1_SHIFT:
+		  	case 0x0203 << ROT1_SHIFT:
+		  	case 0x0301 << ROT1_SHIFT:
+		  		a++;
+		  	    break;
+/*
+* CCW
+*
+* 00	01 | ______00	______01
+* 01	11 | ______01	______11
+* 10	00 | ______10	______00
+* 11	10 | ______11	______10
+*/
+		  	case 0x0001 << ROT1_SHIFT:
+		  	case 0x0103 << ROT1_SHIFT:
+		  	case 0x0200 << ROT1_SHIFT:
+		  	case 0x0302 << ROT1_SHIFT:
+		  	    a--;
+		  		break;
+		  }
+#endif
+
+		// counter 2
+#ifdef ROT2_SHIFT
+		switch(instance.prev & (0x0303 << ROT2_SHIFT))
+		{
+/*
+* CW
+*
+* 00	10 | ______00	______10
+* 01	00 | ______01	______00
+* 10	11 | ______10	______11
+* 11	01 | ______11	______01
+*
+*/
+		    case 0x0002 << ROT2_SHIFT:
+		  	case 0x0100 << ROT2_SHIFT:
+		  	case 0x0203 << ROT2_SHIFT:
+		  	case 0x0301 << ROT2_SHIFT:
+		  		b++;
+		  	    break;
+/*
+* CCW
+*
+* 00	01 | ______00	______01
+* 01	11 | ______01	______11
+* 10	00 | ______10	______00
+* 11	10 | ______11	______10
+*/
+		  	case 0x0001 << ROT2_SHIFT:
+		  	case 0x0103 << ROT2_SHIFT:
+		  	case 0x0200 << ROT2_SHIFT:
+		  	case 0x0302 << ROT2_SHIFT:
+		  	    b--;
+		  		break;
+		  }
+#endif
+
+		// counter 3
+#ifdef ROT3_SHIFT
+		switch(instance.prev & (0x0303 << ROT3_SHIFT))
+		{
+/*
+* CW
+*
+* 00	10 | ______00	______10
+* 01	00 | ______01	______00
+* 10	11 | ______10	______11
+* 11	01 | ______11	______01
+*
+*/
+		    case 0x0002 << ROT3_SHIFT:
+		  	case 0x0100 << ROT3_SHIFT:
+		  	case 0x0203 << ROT3_SHIFT:
+		  	case 0x0301 << ROT3_SHIFT:
+		  		c++;
+		  	    break;
+/*
+* CCW
+*
+* 00	01 | ______00	______01
+* 01	11 | ______01	______11
+* 10	00 | ______10	______00
+* 11	10 | ______11	______10
+*/
+		  	case 0x0001 << ROT3_SHIFT:
+		  	case 0x0103 << ROT3_SHIFT:
+		  	case 0x0200 << ROT3_SHIFT:
+		  	case 0x0302 << ROT3_SHIFT:
+		  	    c--;
+		  		break;
+		  }
+#endif
+
+	  }
+
+	  instance.value0 += a;
+	  instance.value1 += b;
+	  instance.value2 += c;
+}
 
 int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
 {
-	instance.s1 = buf[0];
-	instance.s2 = buf[1];
-
-	instance.value = buf[2];
-	instance.value <<= 8;
-	instance.value |= buf[3];
-	instance.value <<= 8;
-	instance.value |= buf[4];
-	instance.value <<= 8;
-	instance.value |= buf[5];
-
 	return (USBD_OK);
 };
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+#define LED_CNT	100
+#define SEQ_CNT 10
+#define DMA_BUF_SIZE 100
+static uint8_t dma_buf_data[2 * DMA_BUF_SIZE];
+volatile static uint32_t dma_half_cnt = 0, dma_full_cnt = 0;
+
+static void dma_cb_half(DMA_HandleTypeDef *hdma)
 {
-	if(GPIO_Pin != GPIO_PIN_9 && GPIO_Pin != GPIO_PIN_8)
-		return;
+	instance.s2++;
+	dma_half_cnt++;
+}
 
-/*
- * CW
- *
- * 00	10
- * 01	00
- * 10	11
- * 11	01
- *
- * CCW
- *
- * 00	01
- * 01	11
- * 10	00
- * 11	10
- *
- * MAP
- *
- * 00	00	 0
- * 00	01	-1
- * 00	10	+1
- * 00	11	 0
- * 01	00	+1
- * 01	01	 0
- * 01	10	 0
- * 01	11	-1
- * 10	00	-1
- * 10	01	 0
- * 10	10	 0
- * 10	11	+1
- * 11	00	 0
- * 11	01	+1
- * 11	10	-1
- * 11	11	 0
- *
- */
+static void dma_cb_full(DMA_HandleTypeDef *hdma)
+{
+	instance.s2++;
+	dma_full_cnt++;
+}
 
-	static const int8_t r[16] = { 0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0 };
+static void dma_cb_abort(DMA_HandleTypeDef *hdma)
+{
+	instance.s1++;
+}
 
+static void dma_cb_error(DMA_HandleTypeDef *hdma)
+{
+	instance.s1++;
+}
 
-	instance.rot <<= 1;
-	instance.rot |= HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8);
-	instance.rot <<= 1;
-	instance.rot |= HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9);
-
-	instance.value += r[ instance.rot & 0x0F ];
-};
-
-#define BUF1_SIZE	1024
-uint8_t buf1[BUF1_SIZE];
-uint16_t buf1_prev;
 /* USER CODE END 0 */
 
 /**
@@ -148,7 +268,6 @@ uint16_t buf1_prev;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	int led_cnt = 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -157,8 +276,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-    for(int j = 0; j < 1024; j++)
-    	buf1[j] = j;
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -172,137 +289,68 @@ int main(void)
   MX_GPIO_Init();
   MX_USB_DEVICE_Init();
   MX_DMA_Init();
-  MX_TIM3_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
+  // hdma_tim3_ch4_up vs htim3.hdma[TIM_DMA_ID_UPDATE] */
+
+  HAL_DMA_RegisterCallback(htim1.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_CPLT_CB_ID, dma_cb_full);
+  HAL_DMA_RegisterCallback(htim1.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_HALFCPLT_CB_ID, dma_cb_half);
+  HAL_DMA_RegisterCallback(htim1.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_ERROR_CB_ID, dma_cb_error);
+  HAL_DMA_RegisterCallback(htim1.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_ABORT_CB_ID, dma_cb_abort);
+
+  HAL_DMA_Start_IT(htim1.hdma[TIM_DMA_ID_UPDATE], (uint32_t)&(GPIOA->IDR), (uint32_t)dma_buf_data, 2 * DMA_BUF_SIZE);
+  __HAL_TIM_ENABLE_DMA(&htim1, TIM_DMA_UPDATE ); //Enable the TIM Update DMA request
+  __HAL_TIM_ENABLE(&htim1);                 //Enable the Peripheral
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int led_cnt = LED_CNT, sec_cnt = SEQ_CNT;
+
+  dma_half_cnt = 0;
+  dma_full_cnt = 0;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-#if 0
-	  uint8_t buf[8];
 
-	  buf[0] = instance.s1;
-	  buf[1] = instance.s2;
-	  buf[2] = instance.value >> 24;
-	  buf[3] = instance.value >> 16;
-	  buf[4] = instance.value >>  8;
-	  buf[5] = instance.value >>  0;
+	  /* wait for any buffer */
+	  while(!dma_half_cnt && !dma_full_cnt);
 
-	  USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 6);
-	  HAL_Delay(10);
+	  if(dma_half_cnt > 1 || dma_full_cnt > 1)
+		  instance.s1++;
 
-	  if(!(led_cnt % 10))
-		  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-	  led_cnt++;
-#else	// performance test mode
-	  // toggle led
-	  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-	  /* test sequence send */
-	  uint8_t buf[8];
-	  buf[0] = instance.s1;
-	  buf[1] = instance.s2;
-	  buf[2] = instance.value >> 24;
-	  buf[3] = instance.value >> 16;
-	  buf[4] = instance.value >>  8;
-	  buf[5] = instance.value >>  0;
-	  USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 6);
-#if 0
-	  int i, s;
-	  for(s = 0, i = 0; i < 8000000; i++)
-		  s += GPIOB->IDR;
-#else
-	  int j, i;
-	  for(j = 0; j < 8000; j++)
+	  /* first part ready */
+	  if(dma_half_cnt)
 	  {
-		  int32_t a = 0, b = 0, c = 0;
-		  for(i = 0; i < BUF1_SIZE; i++)
-		  {
-			  buf1_prev <<= 8;
-			  buf1_prev |= buf1[i];
-
-			  // counter 1
-			  switch(buf1_prev & 0x0303)
-			  {
- /*
-			   * CW
-			   *
-			   * 00	10 | ______00	______10
-			   * 01	00 | ______01	______00
-			   * 10	11 | ______10	______11
-			   * 11	01 | ______11	______01
-			   *
-*/
-			  	  case 0x0002:
-			  	  case 0x0100:
-			  	  case 0x0203:
-			  	  case 0x0301:
-			  		  a++;
-			  		  break;
-/*
-			   * CCW
-			   *
-			   * 00	01 | ______00	______01
-			   * 01	11 | ______01	______11
-			   * 10	00 | ______10	______00
-			   * 11	10 | ______11	______10
-*/
-			  	  case 0x0001:
-			  	  case 0x0103:
-			  	  case 0x0200:
-			  	  case 0x0302:
-			  		  a--;
-			  		  break;
-			  }
-#if 0
-			  // counter 2
-			  switch(buf1_prev & (0x0303 << 2))
-			  {
-			  	  case 0x0002 << 2:
-			  	  case 0x0100 << 2:
-			  	  case 0x0203 << 2:
-			  	  case 0x0301 << 2:
-			  		  b++;
-			  		  break;
-			  	  case 0x0001 << 2:
-			  	  case 0x0103 << 2:
-			  	  case 0x0200 << 2:
-			  	  case 0x0302 << 2:
-			  		  b--;
-			  		  break;
-			  }
-#endif
-#if 0
-			  // counter 3
-			  switch(buf1_prev & (0x0303 << 4))
-			  {
-			  	  case 0x0002 << 4:
-			  	  case 0x0100 << 4:
-			  	  case 0x0203 << 4:
-			  	  case 0x0301 << 4:
-			  		  c++;
-			  		  break;
-			  	  case 0x0001 << 4:
-			  	  case 0x0103 << 4:
-			  	  case 0x0200 << 4:
-			  	  case 0x0302 << 4:
-			  		  c--;
-			  		  break;
-			  }
-#endif
-		  }
-
-		  instance.values[0] += a;
-		  instance.values[1] += b;
-		  instance.values[2] += c;
+		  dma_half_cnt = 0;
+		  rotary_dec_buf(dma_buf_data, DMA_BUF_SIZE / 2);
 	  }
-#endif
-#endif
+
+	  /* second part ready */
+	  if(dma_full_cnt)
+	  {
+		  dma_full_cnt = 0;
+		  rotary_dec_buf(dma_buf_data + DMA_BUF_SIZE, DMA_BUF_SIZE / 2);
+	  }
+
+	  // toggle led
+	  led_cnt--;
+	  if(!led_cnt)
+	  {
+		  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+		  led_cnt = LED_CNT;
+	  };
+
+	  /* report send */
+	  sec_cnt--;
+	  if(!sec_cnt)
+	  {
+		  instance_to_hid();
+		  sec_cnt = SEQ_CNT;
+	  };
   }
   /* USER CODE END 3 */
 }
@@ -351,60 +399,48 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief TIM3 Initialization Function
+  * @brief TIM1 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM3_Init(void)
+static void MX_TIM1_Init(void)
 {
 
-  /* USER CODE BEGIN TIM3_Init 0 */
+  /* USER CODE BEGIN TIM1_Init 0 */
 
-  /* USER CODE END TIM3_Init 0 */
+  /* USER CODE END TIM1_Init 0 */
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_IC_InitTypeDef sConfigIC = {0};
 
-  /* USER CODE BEGIN TIM3_Init 1 */
+  /* USER CODE BEGIN TIM1_Init 1 */
 
-  /* USER CODE END TIM3_Init 1 */
-  htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
-  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 65535;
-  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 96 - 1; // 96MHz
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 10 - 1; // 10 times = 100KHz
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
   }
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_IC_Init(&htim3) != HAL_OK)
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
   {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
-  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
-  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
-  sConfigIC.ICFilter = 0;
-  if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM3_Init 2 */
+  /* USER CODE BEGIN TIM1_Init 2 */
 
-  /* USER CODE END TIM3_Init 2 */
+  /* USER CODE END TIM1_Init 2 */
 
 }
 
@@ -415,12 +451,12 @@ static void MX_DMA_Init(void)
 {
 
   /* DMA controller clock enable */
-  __HAL_RCC_DMA1_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
-  /* DMA1_Stream2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Stream2_IRQn);
+  /* DMA2_Stream5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream5_IRQn);
 
 }
 
@@ -437,7 +473,6 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
@@ -456,16 +491,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PB8 PB9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-  GPIO_InitStruct.Pull = GPIO_PULLUP; //GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 }
 
