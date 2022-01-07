@@ -43,6 +43,7 @@ typedef struct instance_desc
     } ws;
 
     int32_t values[LENS_PARAM_LAST];
+    uint32_t stat[2];
 
     DEFAULT_INSTANCE_PARAMS
 } instance_t;

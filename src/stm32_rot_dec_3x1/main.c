@@ -92,8 +92,9 @@ int main(int argc, char** argv)
         while(!f_exit)
         {
             if(!instance->f_demonize)
-                fprintf(stderr, "| %10d | %10d | %10d |\r",
-                    instance->values[0], instance->values[1], instance->values[2]);
+                fprintf(stderr, "| %10d | %10d | %10d |  %02X | %02X |\r",
+                    instance->values[0], instance->values[1], instance->values[2],
+                    instance->stat[0], instance->stat[1]);
 
             usleep(100000);
         };
