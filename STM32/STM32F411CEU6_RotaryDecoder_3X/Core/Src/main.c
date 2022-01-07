@@ -41,8 +41,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-TIM_HandleTypeDef htim3;
-DMA_HandleTypeDef hdma_tim3_ch4_up;
+TIM_HandleTypeDef htim1;
+DMA_HandleTypeDef hdma_tim1_up;
 
 /* USER CODE BEGIN PV */
 
@@ -52,7 +52,7 @@ DMA_HandleTypeDef hdma_tim3_ch4_up;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
-static void MX_TIM3_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -72,9 +72,13 @@ static inline void instance_to_hid()
 {
 	uint8_t buf[32];
 
+#if 0
+	buf[0] = HAL_DMA_GetState(&hdma_tim3_ch4_up);
+	buf[1] = HAL_DMA_GetError(&hdma_tim3_ch4_up);
+#else
 	buf[0] = instance.s1;
 	buf[1] = instance.s2;
-
+#endif
 	buf[2] = instance.value0 >> 24;
 	buf[3] = instance.value0 >> 16;
 	buf[4] = instance.value0 >>  8;
@@ -224,29 +228,37 @@ static inline void rotary_dec_buf(uint8_t *buf, int len)
 
 int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
 {
-	instance.s1 = buf[0];
-	instance.s2 = buf[1];
-
 	return (USBD_OK);
 };
 
-#define DMA_BUF_SIZE 512
-uint32_t dma_buf_size = DMA_BUF_SIZE;
-uint8_t dma_buf_data[DMA_BUF_SIZE];
+#define LED_CNT	100
+#define SEQ_CNT 10
+#define DMA_BUF_SIZE 100
+static uint8_t dma_buf_data[2 * DMA_BUF_SIZE];
+volatile static uint32_t dma_half_cnt = 0, dma_full_cnt = 0;
 
 static void dma_cb_half(DMA_HandleTypeDef *hdma)
 {
 	instance.s2++;
+	dma_half_cnt++;
 }
 
 static void dma_cb_full(DMA_HandleTypeDef *hdma)
 {
+	instance.s2++;
+	dma_full_cnt++;
+}
+
+static void dma_cb_abort(DMA_HandleTypeDef *hdma)
+{
 	instance.s1++;
 }
 
+static void dma_cb_error(DMA_HandleTypeDef *hdma)
+{
+	instance.s1++;
+}
 
-#define BUF1_SIZE	1024
-uint8_t buf1[BUF1_SIZE];
 /* USER CODE END 0 */
 
 /**
@@ -264,38 +276,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-    for(int j = 0; j < BUF1_SIZE; j += 8)
-    {
-    	const static uint8_t cs[8] =
-    	{
-   			1,  // 01
-   			0,  // 00
-   			0,  // 00
-   			2,  // 10
-   			2,  // 10
-   			3,  // 11
-   			3,  // 11
-   			1,  // 01
-    	};
-
-    	const static uint8_t ccs[8] =
-    	{
-   			2,  // 10
-   			0,  // 00
-   			0,  // 00
-   			1,  // 01
-   			1,  // 01
-   			3,  // 11
-   			3,  // 11
-   			2,  // 10
-    	};
-
-    	for(int k = 0; k < 8; k ++)
-    		buf1[j + k] =
-    			cs[k] << ROT1_SHIFT |
-				ccs[k] << ROT2_SHIFT |
-				cs[k] << ROT3_SHIFT;
-    }
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -309,38 +289,68 @@ int main(void)
   MX_GPIO_Init();
   MX_USB_DEVICE_Init();
   MX_DMA_Init();
-  MX_TIM3_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  /*
-   * htim3.hdma[TIM_DMA_ID_UPDATE] or hdma_tim3_ch1_trig ?
-   *
-   */
-  HAL_DMA_RegisterCallback(htim3.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_CPLT_CB_ID, dma_cb_full);
-  HAL_DMA_RegisterCallback(htim3.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_HALFCPLT_CB_ID, dma_cb_half);
-  HAL_DMA_Start_IT(htim3.hdma[TIM_DMA_ID_UPDATE], (uint32_t)&GPIOA->IDR, (uint32_t)dma_buf_data, dma_buf_size);
-  //  ?
-  __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_UPDATE);
-  __HAL_TIM_ENABLE(&htim3);
+  // hdma_tim3_ch4_up vs htim3.hdma[TIM_DMA_ID_UPDATE] */
+
+  HAL_DMA_RegisterCallback(htim1.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_CPLT_CB_ID, dma_cb_full);
+  HAL_DMA_RegisterCallback(htim1.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_HALFCPLT_CB_ID, dma_cb_half);
+  HAL_DMA_RegisterCallback(htim1.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_ERROR_CB_ID, dma_cb_error);
+  HAL_DMA_RegisterCallback(htim1.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_ABORT_CB_ID, dma_cb_abort);
+
+  HAL_DMA_Start_IT(htim1.hdma[TIM_DMA_ID_UPDATE], (uint32_t)&(GPIOA->IDR), (uint32_t)dma_buf_data, 2 * DMA_BUF_SIZE);
+  __HAL_TIM_ENABLE_DMA(&htim1, TIM_DMA_UPDATE ); //Enable the TIM Update DMA request
+  __HAL_TIM_ENABLE(&htim1);                 //Enable the Peripheral
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int led_cnt = LED_CNT, sec_cnt = SEQ_CNT;
+
+  dma_half_cnt = 0;
+  dma_full_cnt = 0;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+	  /* wait for any buffer */
+	  while(!dma_half_cnt && !dma_full_cnt);
+
+	  if(dma_half_cnt > 1 || dma_full_cnt > 1)
+		  instance.s1++;
+
+	  /* first part ready */
+	  if(dma_half_cnt)
+	  {
+		  dma_half_cnt = 0;
+		  rotary_dec_buf(dma_buf_data, DMA_BUF_SIZE / 2);
+	  }
+
+	  /* second part ready */
+	  if(dma_full_cnt)
+	  {
+		  dma_full_cnt = 0;
+		  rotary_dec_buf(dma_buf_data + DMA_BUF_SIZE, DMA_BUF_SIZE / 2);
+	  }
+
 	  // toggle led
-	  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+	  led_cnt--;
+	  if(!led_cnt)
+	  {
+		  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+		  led_cnt = LED_CNT;
+	  };
 
-	  /* test sequence send */
-	  instance_to_hid();
-
-	  /* test processing */
-	  int i;
-	  for(i = 0; i < 8000; i++)
-		  rotary_dec_buf(buf1, BUF1_SIZE);
+	  /* report send */
+	  sec_cnt--;
+	  if(!sec_cnt)
+	  {
+		  instance_to_hid();
+		  sec_cnt = SEQ_CNT;
+	  };
   }
   /* USER CODE END 3 */
 }
@@ -389,47 +399,48 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief TIM3 Initialization Function
+  * @brief TIM1 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM3_Init(void)
+static void MX_TIM1_Init(void)
 {
 
-  /* USER CODE BEGIN TIM3_Init 0 */
+  /* USER CODE BEGIN TIM1_Init 0 */
 
-  /* USER CODE END TIM3_Init 0 */
+  /* USER CODE END TIM1_Init 0 */
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE BEGIN TIM3_Init 1 */
+  /* USER CODE BEGIN TIM1_Init 1 */
 
-  /* USER CODE END TIM3_Init 1 */
-  htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 96;
-  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 10;
-  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 96 - 1; // 96MHz
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 10 - 1; // 10 times = 100KHz
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
   }
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
   {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM3_Init 2 */
+  /* USER CODE BEGIN TIM1_Init 2 */
 
-  /* USER CODE END TIM3_Init 2 */
+  /* USER CODE END TIM1_Init 2 */
 
 }
 
@@ -440,12 +451,12 @@ static void MX_DMA_Init(void)
 {
 
   /* DMA controller clock enable */
-  __HAL_RCC_DMA1_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
-  /* DMA1_Stream2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Stream2_IRQn);
+  /* DMA2_Stream5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream5_IRQn);
 
 }
 
