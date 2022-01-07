@@ -16,7 +16,7 @@
 #include "instance.h"
 #include "common/logger.h"
 
-#include "stm32_rot_dec.h"
+#include "stm32_rot_dec_1x3.h"
 
 #define VID 0x05df
 #define PID 0x16c0

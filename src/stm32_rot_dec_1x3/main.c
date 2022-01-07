@@ -12,7 +12,7 @@
 #include "common/logger.h"
 #include "common/demonize.h"
 
-#include "stm32_rot_dec.h"
+#include "stm32_rot_dec_1x3.h"
 
 static int f_exit = 0;
 

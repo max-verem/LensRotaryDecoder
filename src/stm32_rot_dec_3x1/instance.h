@@ -10,10 +10,10 @@ extern "C"
 #include <stdint.h>
 #include <limits.h>
 
-#include "stm32_rot_dec.git.h"
+#include "stm32_rot_dec_3x1.git.h"
 #include "common/instance.h"
 
-#define PRODUCT_NAME "stm32_rot_dec"
+#define PRODUCT_NAME "stm32_rot_dec_3x1"
 #define PRODUCT_STRING PRODUCT_NAME "-" GITVERSION ", Copyright by Maksym Veremeyenko (c) 2022"
 
 #define WS_LISTEN_PORT          8070
@@ -42,7 +42,6 @@ typedef struct instance_desc
         char tmp[PATH_MAX];
     } ws;
 
-    char serials[LENS_PARAM_LAST][PATH_MAX];
     int32_t values[LENS_PARAM_LAST];
 
     DEFAULT_INSTANCE_PARAMS
