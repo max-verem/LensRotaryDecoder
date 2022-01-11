@@ -33,6 +33,18 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+//#define ROTARY_TABLE
+#define LED_CNT	100
+#define SEQ_CNT 10
+#define DMA_BUF_SIZE 100
+#define ROT1_SHIFT 0	/* PA0, PA1 */
+#define ROT2_SHIFT 2	/* PA2, PA3 */
+#define ROT3_SHIFT 4	/* PA4, PA5 */
+#define TIMER_PRESCALER  96 // 96MHz
+#define TIMER_PERIOD 10 // 10 times = 100KHz
+#define ROTARY_TABLE
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -97,14 +109,40 @@ static inline void instance_to_hid()
 	USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 14);
 }
 
+#ifdef ROTARY_TABLE
+static int32_t rotary_table[1 << 12][3];
+
+static inline void rotary_dec_table(uint8_t *buf, int len)
+{
+	int32_t prev = instance.prev;
+    int32_t a = 0, b = 0, c = 0;
+
+	for(int i = 0; i < len; i++)
+	{
+		int32_t curr = buf[i] & 0x3F;
+
+		if(curr != prev)
+		{
+			prev <<= 6;
+			prev |= curr;
+			a += rotary_table[prev][0];
+			b += rotary_table[prev][1];
+			c += rotary_table[prev][2];
+			prev &= 0x3F;
+		}
+	};
+
+	instance.value0 += a;
+	instance.value1 += b;
+	instance.value2 += c;
+
+	instance.prev = prev;
+}
+#else
 static inline void rotary_dec_buf(uint8_t *buf, int len)
 {
 	int i;
     int32_t a = 0, b = 0, c = 0;
-
-#define ROT1_SHIFT 1	/* PA1, PA2 */
-#define ROT2_SHIFT 3	/* PA3, PA4 */
-#define ROT3_SHIFT 5	/* PA5, PA6 */
 
 	for(i = 0; i < len; i++)
 	{
@@ -112,7 +150,6 @@ static inline void rotary_dec_buf(uint8_t *buf, int len)
 	    instance.prev |= buf[i];
 
 		// counter 1
-#ifdef ROT1_SHIFT
 		switch(instance.prev & (0x0303 << ROT1_SHIFT))
 		{
 /*
@@ -145,10 +182,8 @@ static inline void rotary_dec_buf(uint8_t *buf, int len)
 		  	    a--;
 		  		break;
 		  }
-#endif
 
 		// counter 2
-#ifdef ROT2_SHIFT
 		switch(instance.prev & (0x0303 << ROT2_SHIFT))
 		{
 /*
@@ -180,11 +215,9 @@ static inline void rotary_dec_buf(uint8_t *buf, int len)
 		  	case 0x0302 << ROT2_SHIFT:
 		  	    b--;
 		  		break;
-		  }
-#endif
+		}
 
 		// counter 3
-#ifdef ROT3_SHIFT
 		switch(instance.prev & (0x0303 << ROT3_SHIFT))
 		{
 /*
@@ -217,23 +250,19 @@ static inline void rotary_dec_buf(uint8_t *buf, int len)
 		  	    c--;
 		  		break;
 		  }
-#endif
-
 	  }
 
 	  instance.value0 += a;
 	  instance.value1 += b;
 	  instance.value2 += c;
 }
+#endif
 
 int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
 {
 	return (USBD_OK);
 };
 
-#define LED_CNT	100
-#define SEQ_CNT 10
-#define DMA_BUF_SIZE 100
 static uint8_t dma_buf_data[2 * DMA_BUF_SIZE];
 volatile static uint32_t dma_half_cnt = 0, dma_full_cnt = 0;
 
@@ -258,6 +287,93 @@ static void dma_cb_error(DMA_HandleTypeDef *hdma)
 {
 	instance.s1++;
 }
+
+#ifdef ROTARY_TABLE
+static void rotary_gen_table()
+{
+	int i;
+
+	// generate tables
+	for(i = 0; i < 1 << 12; i++)
+	{
+		rotary_table[i][0] =
+		rotary_table[i][1] =
+		rotary_table[i][2] = 0;
+		/*
+		 *      2     1     0     2     1     0
+		 *   |=====|=====||=====|=====||=====|=====|
+		 *   |11|10| 9| 8|| 7| 6| 5| 4|| 3| 2| 1| 0|
+		 *
+		 *   MASK
+		 *   |           || 1| 1| X| X|| Z| Z| 1| 1|  0xC3
+		 *
+		 *                  8  4  2  1   8  4  2  1
+ 		 *   CW
+		 *   |           || 0| 0| X| X|| Z| Z| 1| 0|  0x02
+		 *   |           || 0| 1| X| X|| Z| Z| 0| 0|  0x40
+		 *   |           || 1| 0| X| X|| Z| Z| 1| 1|  0x83
+		 *   |           || 1| 1| X| X|| Z| Z| 0| 1|  0xC1
+		 *
+		 *   CCW
+		 *   |           || 0| 0| X| X|| Z| Z| 0| 1|  0x01
+		 *   |           || 0| 1| X| X|| Z| Z| 1| 1|  0x43
+		 *   |           || 1| 0| X| X|| Z| Z| 0| 0|  0x80
+		 *   |           || 1| 1| X| X|| Z| Z| 1| 0|  0xC2
+		 *
+		 */
+		switch(i & (0x00C3 << ROT1_SHIFT))
+		{
+	    	case 0x0002 << ROT1_SHIFT:
+	    	case 0x0040 << ROT1_SHIFT:
+	    	case 0x0083 << ROT1_SHIFT:
+	    	case 0x00C1 << ROT1_SHIFT:
+				rotary_table[i][0] = 1;
+	  	    	break;
+
+	    	case 0x0001 << ROT1_SHIFT:
+	    	case 0x0043 << ROT1_SHIFT:
+	    	case 0x0080 << ROT1_SHIFT:
+	    	case 0x00C2 << ROT1_SHIFT:
+				rotary_table[i][0] = -1;
+	  			break;
+		}
+
+		switch(i & (0x00C3 << ROT2_SHIFT))
+		{
+	    	case 0x0002 << ROT2_SHIFT:
+	    	case 0x0040 << ROT2_SHIFT:
+	    	case 0x0083 << ROT2_SHIFT:
+	    	case 0x00C1 << ROT2_SHIFT:
+				rotary_table[i][1] = 1;
+	  	    	break;
+
+	    	case 0x0001 << ROT2_SHIFT:
+	    	case 0x0043 << ROT2_SHIFT:
+	    	case 0x0080 << ROT2_SHIFT:
+	    	case 0x00C2 << ROT2_SHIFT:
+				rotary_table[i][1] = -1;
+	  			break;
+		}
+
+		switch(i & (0x00C3 << ROT3_SHIFT))
+		{
+			case 0x0002 << ROT3_SHIFT:
+			case 0x0040 << ROT3_SHIFT:
+			case 0x0083 << ROT3_SHIFT:
+			case 0x00C1 << ROT3_SHIFT:
+				rotary_table[i][2] = 1;
+	  	    	break;
+
+			case 0x0001 << ROT3_SHIFT:
+			case 0x0043 << ROT3_SHIFT:
+			case 0x0080 << ROT3_SHIFT:
+			case 0x00C2 << ROT3_SHIFT:
+				rotary_table[i][2] = -1;
+	  			break;
+		}
+	}
+}
+#endif
 
 /* USER CODE END 0 */
 
@@ -291,7 +407,9 @@ int main(void)
   MX_DMA_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  // hdma_tim3_ch4_up vs htim3.hdma[TIM_DMA_ID_UPDATE] */
+#ifdef ROTARY_TABLE
+  rotary_gen_table();
+#endif
 
   HAL_DMA_RegisterCallback(htim1.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_CPLT_CB_ID, dma_cb_full);
   HAL_DMA_RegisterCallback(htim1.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_HALFCPLT_CB_ID, dma_cb_half);
@@ -306,6 +424,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
   int led_cnt = LED_CNT, sec_cnt = SEQ_CNT;
 
   dma_half_cnt = 0;
@@ -326,14 +445,22 @@ int main(void)
 	  if(dma_half_cnt)
 	  {
 		  dma_half_cnt = 0;
-		  rotary_dec_buf(dma_buf_data, DMA_BUF_SIZE / 2);
+#ifdef ROTARY_TABLE
+		  rotary_dec_table(dma_buf_data, DMA_BUF_SIZE);
+#else
+		  rotary_dec_buf(dma_buf_data, DMA_BUF_SIZE);
+#endif
 	  }
 
 	  /* second part ready */
 	  if(dma_full_cnt)
 	  {
 		  dma_full_cnt = 0;
-		  rotary_dec_buf(dma_buf_data + DMA_BUF_SIZE, DMA_BUF_SIZE / 2);
+#ifdef ROTARY_TABLE
+		  rotary_dec_table(dma_buf_data + DMA_BUF_SIZE, DMA_BUF_SIZE);
+#else
+		  rotary_dec_buf(dma_buf_data + DMA_BUF_SIZE, DMA_BUF_SIZE);
+#endif
 	  }
 
 	  // toggle led
@@ -417,9 +544,9 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 96 - 1; // 96MHz
+  htim1.Init.Prescaler = TIMER_PRESCALER - 1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 10 - 1; // 10 times = 100KHz
+  htim1.Init.Period = TIMER_PERIOD - 1;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -484,10 +611,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA1 PA2 PA3 PA4
-                           PA5 PA6 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4
-                          |GPIO_PIN_5|GPIO_PIN_6;
+  /*Configure GPIO pins : PA0 PA1 PA2 PA3
+                           PA4 PA5 PA6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
+                          |GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
