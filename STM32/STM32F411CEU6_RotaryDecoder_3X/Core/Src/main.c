@@ -33,17 +33,25 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
-//#define ROTARY_TABLE
-#define LED_CNT	100
-#define SEQ_CNT 10
-#define DMA_BUF_SIZE 100
 #define ROT1_SHIFT 0	/* PA0, PA1 */
 #define ROT2_SHIFT 2	/* PA2, PA3 */
 #define ROT3_SHIFT 4	/* PA4, PA5 */
-#define TIMER_PRESCALER  96 // 96MHz
-#define TIMER_PERIOD 10 // 10 times = 100KHz
+
 #define ROTARY_TABLE
+
+#ifdef ROTARY_TABLE
+#define LED_CNT             1000
+#define SEQ_CNT             100
+#define DMA_BUF_SIZE        400
+#define TIMER_PRESCALER     8 // 96MHz / 8 = 12Mhz
+#define TIMER_PERIOD        3 // 12Mhz / 3 = 4MHz
+#else
+#define LED_CNT             100
+#define SEQ_CNT             10
+#define DMA_BUF_SIZE        100
+#define TIMER_PRESCALER     96 // 96MHz / 96 = 1Mhz
+#define TIMER_PERIOD        10 // 1Mhz / 10 = 100 KHz
+#endif
 
 /* USER CODE END PD */
 
@@ -408,7 +416,9 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 #ifdef ROTARY_TABLE
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
   rotary_gen_table();
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 #endif
 
   HAL_DMA_RegisterCallback(htim1.hdma[TIM_DMA_ID_UPDATE], HAL_DMA_XFER_CPLT_CB_ID, dma_cb_full);
@@ -451,7 +461,7 @@ int main(void)
 		  rotary_dec_buf(dma_buf_data, DMA_BUF_SIZE);
 #endif
 	  }
-
+	  else
 	  /* second part ready */
 	  if(dma_full_cnt)
 	  {
