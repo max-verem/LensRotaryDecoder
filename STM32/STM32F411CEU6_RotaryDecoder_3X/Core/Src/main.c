@@ -40,9 +40,9 @@
 #define ROTARY_TABLE
 
 #ifdef ROTARY_TABLE
-#define LED_CNT             1000
-#define SEQ_CNT             100
-#define DMA_BUF_SIZE        400
+#define LED_CNT             1000	// 10KHz / 1000 = 10Hz
+#define SEQ_CNT             100		// 10KHz / 100 = 100Hz
+#define DMA_BUF_SIZE        400		// 4MHz / 400 = 10KHz
 #define TIMER_PRESCALER     8 // 96MHz / 8 = 12Mhz
 #define TIMER_PERIOD        3 // 12Mhz / 3 = 4MHz
 #else
@@ -64,6 +64,9 @@
 TIM_HandleTypeDef htim1;
 DMA_HandleTypeDef hdma_tim1_up;
 
+UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_tx;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -73,6 +76,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -88,33 +92,41 @@ static struct
 	uint16_t prev;
 } instance;
 
+static uint8_t buf[32];
+
 static inline void instance_to_hid()
 {
-	uint8_t buf[32];
+	uint32_t cs = 0;
 
 #if 0
 	buf[0] = HAL_DMA_GetState(&hdma_tim3_ch4_up);
 	buf[1] = HAL_DMA_GetError(&hdma_tim3_ch4_up);
 #else
-	buf[0] = instance.s1;
-	buf[1] = instance.s2;
+	cs += buf[0] = instance.s1;
+	cs += buf[1] = instance.s2;
 #endif
-	buf[2] = instance.value0 >> 24;
-	buf[3] = instance.value0 >> 16;
-	buf[4] = instance.value0 >>  8;
-    buf[5] = instance.value0 >>  0;
+	cs += buf[2] = instance.value0 >> 24;
+	cs += buf[3] = instance.value0 >> 16;
+	cs += buf[4] = instance.value0 >>  8;
+	cs += buf[5] = instance.value0 >>  0;
 
-	buf[6] = instance.value1 >> 24;
-	buf[7] = instance.value1 >> 16;
-	buf[8] = instance.value1 >>  8;
-	buf[9] = instance.value1 >>  0;
+	cs += buf[6] = instance.value1 >> 24;
+	cs += buf[7] = instance.value1 >> 16;
+	cs += buf[8] = instance.value1 >>  8;
+	cs += buf[9] = instance.value1 >>  0;
 
-	buf[10] = instance.value2 >> 24;
-	buf[11] = instance.value2 >> 16;
-	buf[12] = instance.value2 >>  8;
-	buf[13] = instance.value2 >>  0;
+	cs += buf[10] = instance.value2 >> 24;
+	cs += buf[11] = instance.value2 >> 16;
+	cs += buf[12] = instance.value2 >>  8;
+	cs += buf[13] = instance.value2 >>  0;
 
+	/* send to USB */
 	USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 14);
+
+	buf[14] = cs >> 8;
+	buf[15] = cs >> 0;
+
+	/* send to UART 16 */
 }
 
 #ifdef ROTARY_TABLE
@@ -414,6 +426,7 @@ int main(void)
   MX_USB_DEVICE_Init();
   MX_DMA_Init();
   MX_TIM1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 #ifdef ROTARY_TABLE
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
@@ -554,9 +567,9 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = TIMER_PRESCALER - 1;
+  htim1.Init.Prescaler = 96;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = TIMER_PERIOD - 1;
+  htim1.Init.Period = 100;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -582,6 +595,39 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 250000;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -594,6 +640,9 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream5_IRQn);
+  /* DMA2_Stream7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 
 }
 
