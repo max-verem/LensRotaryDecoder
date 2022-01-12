@@ -67,7 +67,7 @@
 #define USBD_LANGID_STRING     1033
 #define USBD_MANUFACTURER_STRING     "Maksym Veremeyenko"
 #define USBD_PID_FS     0x16c0
-#define USBD_PRODUCT_STRING_FS     "FPGA Lens Rotary Decoder / https://github.com/max-verem/LensRotaryDecoder"
+#define USBD_PRODUCT_STRING_FS     "Lens Rotary Decoder UDP module/ https://github.com/max-verem/LensRotaryDecoder"
 #define USBD_CONFIGURATION_STRING_FS     "Custom HID Config"
 #define USBD_INTERFACE_STRING_FS     "Custom HID Interface"
 
@@ -442,4 +442,3 @@ static void IntToUnicode(uint32_t value, uint8_t * pbuf, uint8_t len)
   * @}
   */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
