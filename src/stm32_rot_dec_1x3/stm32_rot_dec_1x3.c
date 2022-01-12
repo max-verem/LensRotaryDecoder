@@ -116,6 +116,8 @@ static void* reader_proc(instance_t* instance, int lp)
         while(cur_dev)
         {
             /* convert serial */
+            if(!cur_dev->serial_number)
+                break;
             wchar_to_char(cur_dev->serial_number, str, sizeof(str));
 
             /* save current serial */

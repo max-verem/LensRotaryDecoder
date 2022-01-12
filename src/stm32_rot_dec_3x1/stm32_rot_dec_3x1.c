@@ -83,6 +83,8 @@ void* stm32_rot_dec_proc(void* p)
         while(cur_dev)
         {
             /* convert serial */
+            if(!cur_dev->serial_number)
+                break;
             wchar_to_char(cur_dev->serial_number, str, sizeof(str));
 
             logger_printf(0, "%s: found device [%s] with serial [%s]", __FUNCTION__, cur_dev->path, str);

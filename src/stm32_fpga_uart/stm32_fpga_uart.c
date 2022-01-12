@@ -84,6 +84,8 @@ void* stm32_fpga_uart_proc(void* p)
         while(cur_dev)
         {
             /* convert serial */
+            if(!cur_dev->serial_number)
+                break;
             wchar_to_char(cur_dev->serial_number, str, sizeof(str));
 
             /* notify */
