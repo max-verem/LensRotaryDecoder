@@ -42,7 +42,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
+I2C_HandleTypeDef hi2c2;
 DMA_HandleTypeDef hdma_i2c1_tx;
+DMA_HandleTypeDef hdma_i2c2_tx;
 
 SPI_HandleTypeDef hspi1;
 DMA_HandleTypeDef hdma_spi1_rx;
@@ -62,6 +64,7 @@ static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_I2C2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -81,7 +84,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 	/* enqueue receive more */
 	rx_buf_idx = 1 - rx_buf_idx;
-	HAL_UART_Receive_IT(&huart2, rx_buffers[rx_buf_idx], PACKET_REQ);
+	HAL_UART_Receive_IT(&huart1, rx_buffers[rx_buf_idx], PACKET_REQ);
 
 	/* send to PC */
 	USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, rx_buffer, PACKET_REQ);
@@ -93,6 +96,53 @@ int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
 	return (USBD_OK);
 };
 
+#include "SSD1306.h"
+
+#define OLED1_I2C_ADDR 0x3C
+#define OLED1_SCREEN_WIDTH 128
+#define OLED1_SCREEN_HEIGHT 64
+SSD1306_DEF(hi2c1, oled1, OLED1_I2C_ADDR, OLED1_SCREEN_WIDTH, OLED1_SCREEN_HEIGHT);
+
+#define FONT_WIDTH 8
+#define FONT_HEIGHT 8
+static uint8_t font[] =
+{
+#include "08UKRSTD.h"
+		0
+};
+
+#define TXT_PAD "                          "
+#define OLED1_TEXT_WIDTH (OLED1_SCREEN_WIDTH / FONT_WIDTH)
+#define OLED1_TEXT_HEIGHT (OLED1_SCREEN_HEIGHT / FONT_HEIGHT)
+static uint8_t screen[OLED1_TEXT_WIDTH * OLED1_TEXT_HEIGHT];
+static void screen_to_oled(SSD1306_ctx_t* ctx)
+{
+	int j, c, f = 1 ^ ctx->flip;
+	uint8_t *buf = ctx->fb[f];
+
+	for(c = 0; c < OLED1_TEXT_WIDTH * OLED1_TEXT_HEIGHT; c++)
+		for(j = 0; j < FONT_WIDTH; j++)
+			buf[1 + c * FONT_WIDTH + j] = font[screen[c] * FONT_WIDTH + j];
+
+	ctx->flip = f;
+}
+static void screen_cls()
+{
+	for(int j = 0; j < OLED1_TEXT_HEIGHT * OLED1_TEXT_WIDTH; j++)
+		screen[j] = ' ';
+}
+
+static void screen_put_at(int row, int col, char* txt)
+{
+	int i, c;
+
+	if(row < 0 || row >= OLED1_TEXT_HEIGHT)
+		return;
+
+	for(i = col, c = 0; i < OLED1_TEXT_WIDTH && txt[c]; i++, c++)
+		screen[row * OLED1_TEXT_WIDTH + i] = txt[c];
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -102,6 +152,7 @@ int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+//	int r;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -127,17 +178,49 @@ int main(void)
   MX_USART1_UART_Init();
   MX_I2C1_Init();
   MX_SPI1_Init();
+  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
+  SSD1306_oled1_init();
+  SSD1306_run(&oled1);
+
+  screen_cls();
+  screen_put_at(1, 1, "Lens" TXT_PAD);
+  screen_put_at(3, 1, "Rotary" TXT_PAD);
+  screen_put_at(4, 1, "Decoder" TXT_PAD);
+  screen_put_at(7, 1, "initializing...." TXT_PAD);
+  screen_to_oled(&oled1);
+  HAL_Delay(5000);
+
+  screen_cls();
+  screen_put_at(0, 0, "LensRotaryDecoder" TXT_PAD);
+  screen_put_at(1, 0, "----------------" TXT_PAD);
+  screen_put_at(2, 0, " ZOOM:    122321" TXT_PAD);
+  screen_put_at(3, 0, "FOCUS:    323323" TXT_PAD);
+  screen_put_at(4, 0, " IRIS:   5676575" TXT_PAD);
+  screen_put_at(5, 0, "----------------" TXT_PAD);
+  screen_put_at(6, 0, "FOCUS:    323323" TXT_PAD);
+  screen_put_at(7, 0, " IRIS:   5676575" TXT_PAD);
+  screen_to_oled(&oled1);
+
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int o = 0;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+	  HAL_Delay(200);
+
+
+//	  for(int c = 0; c < sizeof(screen); c++)
+//		  screen[c] = o;
+//	  o++;
+//	  screen_to_oled(&oled1);
   }
   /* USER CODE END 3 */
 }
@@ -216,6 +299,40 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief I2C2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C2_Init(void)
+{
+
+  /* USER CODE BEGIN I2C2_Init 0 */
+
+  /* USER CODE END I2C2_Init 0 */
+
+  /* USER CODE BEGIN I2C2_Init 1 */
+
+  /* USER CODE END I2C2_Init 1 */
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.ClockSpeed = 100000;
+  hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C2_Init 2 */
+
+  /* USER CODE END I2C2_Init 2 */
 
 }
 
@@ -304,6 +421,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Stream1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+  /* DMA1_Stream7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream7_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream7_IRQn);
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
