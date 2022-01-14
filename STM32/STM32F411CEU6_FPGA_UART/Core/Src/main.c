@@ -122,50 +122,7 @@ SSD1306_DEF(hi2c2, oled2, OLED2_I2C_ADDR, OLED2_SCREEN_WIDTH, OLED2_SCREEN_HEIGH
 
 #define TXT_PAD "                          "
 
-static inline int to_dec(int value, char *dst)
-{
-	int c = 0;
-	char *h = dst, buf[32], sign = 0;
-
-	if(!value)
-	{
-		dst[0] = '0';
-		dst[1] = 0;
-		return 2;
-	};
-
-	if(value < 0)
-	{
-		value = -value;
-		sign = '-';
-	}
-	else
-		sign = '+';
-
-	while(value)
-	{
-		buf[c++] = 0x30 + (value % 10);
-		value /= 10;
-	}
-
-	if(sign)
-	{
-		*h = sign;
-		h++;
-	}
-
-	while(c > 0)
-	{
-		*h = buf[c - 1];
-		h++;
-		c--;
-	}
-
-	*h = 0;
-
-	return h - dst;
-}
-
+#include "int2text.h"
 
 /* USER CODE END 0 */
 
@@ -248,6 +205,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   int c1 = 0, c2 = 0;
+  uint8_t c3 = 0, c4;
   while (1)
   {
 	  char tmp[32];
@@ -258,15 +216,25 @@ int main(void)
 	  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 	  HAL_Delay(200);
 
-	  len = to_dec(c1--, tmp);
+	  len = dec_signed_to_str(c1--, tmp);
 	  SSD1306_text_put_at(&oled1, 2, 7, "" TXT_PAD);
 	  SSD1306_text_put_at(&oled1, 2, 16 - len, tmp);
 
-	  len = to_dec(c2++, tmp);
+	  len = dec_signed_to_str(c2++, tmp);
 	  SSD1306_text_put_at(&oled1, 3, 7, "" TXT_PAD);
 	  SSD1306_text_put_at(&oled1, 3, 16 - len, tmp);
 
 	  SSD1306_text_blit(&oled1);
+
+	  len = dec_unsigned_to_str(c3--, tmp);
+	  SSD1306_text_put_at(&oled2, 0, 7, "" TXT_PAD);
+	  SSD1306_text_put_at(&oled2, 0, 16 - len, tmp);
+
+	  len = dec_unsigned_to_str(c4++, tmp);
+	  SSD1306_text_put_at(&oled2, 1, 7, "" TXT_PAD);
+	  SSD1306_text_put_at(&oled2, 1, 16 - len, tmp);
+
+	  SSD1306_text_blit(&oled2);
   }
   /* USER CODE END 3 */
 }
