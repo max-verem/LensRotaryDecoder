@@ -96,13 +96,6 @@ int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
 	return (USBD_OK);
 };
 
-#include "SSD1306.h"
-
-#define OLED1_I2C_ADDR 0x3C
-#define OLED1_SCREEN_WIDTH 128
-#define OLED1_SCREEN_HEIGHT 64
-SSD1306_DEF(hi2c1, oled1, OLED1_I2C_ADDR, OLED1_SCREEN_WIDTH, OLED1_SCREEN_HEIGHT);
-
 #define FONT_WIDTH 8
 #define FONT_HEIGHT 8
 static uint8_t font[] =
@@ -111,37 +104,68 @@ static uint8_t font[] =
 		0
 };
 
+#include "SSD1306.h"
+
+#define OLED1_I2C_ADDR 0x3C
+#define OLED1_SCREEN_WIDTH 128
+#define OLED1_SCREEN_HEIGHT 64
+SSD1306_DEF(hi2c1, oled1, OLED1_I2C_ADDR, OLED1_SCREEN_WIDTH, OLED1_SCREEN_HEIGHT, FONT_WIDTH, FONT_HEIGHT, font);
+
+#define OLED2
+
+#ifdef OLED2
+#define OLED2_I2C_ADDR 0x3C
+#define OLED2_SCREEN_WIDTH 128
+#define OLED2_SCREEN_HEIGHT 32
+SSD1306_DEF(hi2c2, oled2, OLED2_I2C_ADDR, OLED2_SCREEN_WIDTH, OLED2_SCREEN_HEIGHT, FONT_WIDTH, FONT_HEIGHT, font);
+#endif
+
 #define TXT_PAD "                          "
-#define OLED1_TEXT_WIDTH (OLED1_SCREEN_WIDTH / FONT_WIDTH)
-#define OLED1_TEXT_HEIGHT (OLED1_SCREEN_HEIGHT / FONT_HEIGHT)
-static uint8_t screen[OLED1_TEXT_WIDTH * OLED1_TEXT_HEIGHT];
-static void screen_to_oled(SSD1306_ctx_t* ctx)
+
+static inline int to_dec(int value, char *dst)
 {
-	int j, c, f = 1 ^ ctx->flip;
-	uint8_t *buf = ctx->fb[f];
+	int c = 0;
+	char *h = dst, buf[32], sign = 0;
 
-	for(c = 0; c < OLED1_TEXT_WIDTH * OLED1_TEXT_HEIGHT; c++)
-		for(j = 0; j < FONT_WIDTH; j++)
-			buf[1 + c * FONT_WIDTH + j] = font[screen[c] * FONT_WIDTH + j];
+	if(!value)
+	{
+		dst[0] = '0';
+		dst[1] = 0;
+		return 2;
+	};
 
-	ctx->flip = f;
+	if(value < 0)
+	{
+		value = -value;
+		sign = '-';
+	}
+	else
+		sign = '+';
+
+	while(value)
+	{
+		buf[c++] = 0x30 + (value % 10);
+		value /= 10;
+	}
+
+	if(sign)
+	{
+		*h = sign;
+		h++;
+	}
+
+	while(c > 0)
+	{
+		*h = buf[c - 1];
+		h++;
+		c--;
+	}
+
+	*h = 0;
+
+	return h - dst;
 }
-static void screen_cls()
-{
-	for(int j = 0; j < OLED1_TEXT_HEIGHT * OLED1_TEXT_WIDTH; j++)
-		screen[j] = ' ';
-}
 
-static void screen_put_at(int row, int col, char* txt)
-{
-	int i, c;
-
-	if(row < 0 || row >= OLED1_TEXT_HEIGHT)
-		return;
-
-	for(i = col, c = 0; i < OLED1_TEXT_WIDTH && txt[c]; i++, c++)
-		screen[row * OLED1_TEXT_WIDTH + i] = txt[c];
-}
 
 /* USER CODE END 0 */
 
@@ -152,7 +176,6 @@ static void screen_put_at(int row, int col, char* txt)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-//	int r;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -182,45 +205,68 @@ int main(void)
   /* USER CODE BEGIN 2 */
   SSD1306_oled1_init();
   SSD1306_run(&oled1);
+#ifdef OLED2
+  SSD1306_oled2_init();
+  SSD1306_run(&oled2);
+#endif
 
-  screen_cls();
-  screen_put_at(1, 1, "Lens" TXT_PAD);
-  screen_put_at(3, 1, "Rotary" TXT_PAD);
-  screen_put_at(4, 1, "Decoder" TXT_PAD);
-  screen_put_at(7, 1, "initializing...." TXT_PAD);
-  screen_to_oled(&oled1);
+  SSD1306_text_cls(&oled1);
+  SSD1306_text_put_at(&oled1, 1, 1, "Lens" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 3, 1, "Rotary" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 4, 1, "Decoder" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 7, 1, "initializing #2" TXT_PAD);
+  SSD1306_text_blit(&oled1);
+#ifdef OLED2
+  SSD1306_text_cls(&oled2);
+  SSD1306_text_put_at(&oled2, 3, 1, "HELLO WORLD!!" TXT_PAD);
+  SSD1306_text_blit(&oled2);
+#endif
+
   HAL_Delay(5000);
 
-  screen_cls();
-  screen_put_at(0, 0, "LensRotaryDecoder" TXT_PAD);
-  screen_put_at(1, 0, "----------------" TXT_PAD);
-  screen_put_at(2, 0, " ZOOM:    122321" TXT_PAD);
-  screen_put_at(3, 0, "FOCUS:    323323" TXT_PAD);
-  screen_put_at(4, 0, " IRIS:   5676575" TXT_PAD);
-  screen_put_at(5, 0, "----------------" TXT_PAD);
-  screen_put_at(6, 0, "FOCUS:    323323" TXT_PAD);
-  screen_put_at(7, 0, " IRIS:   5676575" TXT_PAD);
-  screen_to_oled(&oled1);
+  SSD1306_text_cls(&oled1);
+  SSD1306_text_put_at(&oled1, 0, 0, "LensRotaryDecoder" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 1, 0, "----------------" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 2, 0, " ZOOM:    122321" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 3, 0, "FOCUS:    323323" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 4, 0, " IRIS:   5676575" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 5, 0, "----------------" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 6, 0, "FOCUS:    323323" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 7, 0, " IRIS:   5676575" TXT_PAD);
+  SSD1306_text_blit(&oled1);
 
-
+#ifdef OLED2
+  SSD1306_text_cls(&oled2);
+  SSD1306_text_put_at(&oled2, 0, 1, "LAN:" TXT_PAD);
+  SSD1306_text_put_at(&oled2, 1, 1, " IP:" TXT_PAD);
+  SSD1306_text_put_at(&oled2, 2, 1, "MAC:" TXT_PAD);
+  SSD1306_text_put_at(&oled2, 3, 1, "initializing...." TXT_PAD);
+  SSD1306_text_blit(&oled2);
+#endif
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  int o = 0;
+  int c1 = 0, c2 = 0;
   while (1)
   {
+	  char tmp[32];
+	  int len;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 	  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 	  HAL_Delay(200);
 
+	  len = to_dec(c1--, tmp);
+	  SSD1306_text_put_at(&oled1, 2, 7, "" TXT_PAD);
+	  SSD1306_text_put_at(&oled1, 2, 16 - len, tmp);
 
-//	  for(int c = 0; c < sizeof(screen); c++)
-//		  screen[c] = o;
-//	  o++;
-//	  screen_to_oled(&oled1);
+	  len = to_dec(c2++, tmp);
+	  SSD1306_text_put_at(&oled1, 3, 7, "" TXT_PAD);
+	  SSD1306_text_put_at(&oled1, 3, 16 - len, tmp);
+
+	  SSD1306_text_blit(&oled1);
   }
   /* USER CODE END 3 */
 }
