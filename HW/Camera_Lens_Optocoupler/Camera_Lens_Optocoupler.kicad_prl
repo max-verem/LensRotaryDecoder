@@ -64,11 +64,11 @@
       35,
       36
     ],
-    "visible_layers": "00312f0_80000001",
+    "visible_layers": "00033f0_80000001",
     "zone_display_mode": 0
   },
   "meta": {
-    "filename": "decoder1.kicad_prl",
+    "filename": "Camera_Lens_Optocoupler.kicad_prl",
     "version": 3
   },
   "project": {

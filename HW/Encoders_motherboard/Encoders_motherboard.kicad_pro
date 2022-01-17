@@ -120,8 +120,8 @@
       },
       "track_widths": [
         0.0,
-        0.35,
         0.4,
+        0.5,
         1.0
       ],
       "via_dimensions": [
@@ -349,7 +349,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "Test_Rotary_Encoder.kicad_pro",
+    "filename": "Encoders_motherboard.kicad_pro",
     "version": 1
   },
   "net_settings": {
@@ -428,7 +428,7 @@
   },
   "sheets": [
     [
-      "04e7ba59-3bd7-4a62-a1c4-ba759fe84e42",
+      "e63e39d7-6ac0-4ffd-8aa3-1841a4541b55",
       ""
     ]
   ],
