@@ -127,6 +127,7 @@ static inline void instance_to_hid()
 	buf[15] = cs >> 0;
 
 	/* send to UART 16 */
+	HAL_UART_Transmit_DMA(&huart1, buf, 16);
 }
 
 #ifdef ROTARY_TABLE
