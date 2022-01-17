@@ -98,33 +98,31 @@ static inline void instance_to_hid()
 {
 	uint32_t cs = 0;
 
-#if 0
-	buf[0] = HAL_DMA_GetState(&hdma_tim3_ch4_up);
-	buf[1] = HAL_DMA_GetError(&hdma_tim3_ch4_up);
-#else
-	cs += buf[0] = instance.s1;
-	cs += buf[1] = instance.s2;
-#endif
-	cs += buf[2] = instance.value0 >> 24;
-	cs += buf[3] = instance.value0 >> 16;
-	cs += buf[4] = instance.value0 >>  8;
-	cs += buf[5] = instance.value0 >>  0;
+	// STH
+	buf[0] = 0xDE;
+	buf[1] = 0xC0;
 
-	cs += buf[6] = instance.value1 >> 24;
-	cs += buf[7] = instance.value1 >> 16;
-	cs += buf[8] = instance.value1 >>  8;
-	cs += buf[9] = instance.value1 >>  0;
+	cs += buf[4] = instance.s1;
+	cs += buf[5] = instance.s2;
 
-	cs += buf[10] = instance.value2 >> 24;
-	cs += buf[11] = instance.value2 >> 16;
-	cs += buf[12] = instance.value2 >>  8;
-	cs += buf[13] = instance.value2 >>  0;
+	cs += buf[ 6] = instance.value0 >> 16;
+	cs += buf[ 7] = instance.value0 >>  8;
+	cs += buf[ 8] = instance.value0 >>  0;
+
+	cs += buf[ 9] = instance.value1 >> 16;
+	cs += buf[10] = instance.value1 >>  8;
+	cs += buf[11] = instance.value1 >>  0;
+
+	cs += buf[12] = instance.value2 >> 16;
+	cs += buf[13] = instance.value2 >>  8;
+	cs += buf[14] = instance.value2 >>  0;
+
+	// control sum
+	buf[2] = (cs >> 8) ^ 0xFF;
+	buf[3] = (cs >> 0) ^ 0xFF;
 
 	/* send to USB */
-	USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 14);
-
-	buf[14] = cs >> 8;
-	buf[15] = cs >> 0;
+	USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, buf, 16);
 
 	/* send to UART 16 */
 	HAL_UART_Transmit_DMA(&huart1, buf, 16);
