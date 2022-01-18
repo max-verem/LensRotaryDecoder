@@ -183,8 +183,8 @@ void* stm32_rot_dec_proc(void* p)
                 instance->values[0] = v0;
                 instance->values[1] = v1;
                 instance->values[2] = v2;
-                instance->stat[0] = recv[2];
-                instance->stat[1] = recv[3];
+                instance->stat[0] = recv[4];
+                instance->stat[1] = recv[5];
                 pthread_mutex_unlock(&instance->lock);
 
                 memcpy(buf, recv, MAX_BUF_READ);
