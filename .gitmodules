@@ -1,6 +1,3 @@
-[submodule "third-party/Kicad-STM32"]
-	path = third-party/Kicad-STM32
-	url = https://github.com/yet-another-average-joe/Kicad-STM32.git
 [submodule "third-party/ioLibrary_Driver"]
 	path = third-party/ioLibrary_Driver
 	url = https://github.com/Wiznet/ioLibrary_Driver.git
