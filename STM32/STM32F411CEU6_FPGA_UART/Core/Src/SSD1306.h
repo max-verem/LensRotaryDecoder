@@ -13,15 +13,14 @@ enum
 typedef struct SSD1306_ctx_desc
 {
 	I2C_HandleTypeDef *hi2c;
-	int state, cb_error_cnt, cb_complete_cnt, flip, width, height;
+	int state, cb_error_cnt, cb_complete_cnt, width, height;
 	uint8_t addr;
-	uint8_t fb[2][2048];
+	uint8_t fb[2048];
 	void (*cb_complete_proc)(struct __I2C_HandleTypeDef *hi2c);
 	void (*cb_error_proc)(struct __I2C_HandleTypeDef *hi2c);
 	int font_width, font_height;
 	uint8_t *font_map;
 	int text_width, text_height;
-	uint8_t text_buf[1024];
 } SSD1306_ctx_t;
 
 #define SSD1306_I2C_ADDR 0x3C
@@ -61,13 +60,9 @@ static inline int SSD1306_CMD(SSD1306_ctx_t *ctx, uint8_t C)
 static void SSD1306_cb_complete(SSD1306_ctx_t *ctx)
 {
 	int __attribute__((unused)) r = 0, sz = ctx->width * ctx->height / 8;
-	static uint8_t buf0[] = {0x00, 0xB0 | 0x00 /* y low 4 bits */, 0x00 /* x low 4 bits */, 0x10 | 0x00 /* x high 4 bits */};
+	static uint8_t buf0[] = {0x00, 0xB0 | 0x00 /* y low 4 bits */, 0x01 /* x low 4 bits */, 0x10 | 0x00 /* x high 4 bits */};
 
 	ctx->cb_complete_cnt++;
-#if 0
-	for(int i = 0; i < 1024; i++)
-		ctx->fb[ctx->flip][i] = ctx->cb_complete_cnt;
-#endif
 	switch(ctx->state)
 	{
 		case SSD1306_FB_READY:
@@ -77,8 +72,8 @@ static void SSD1306_cb_complete(SSD1306_ctx_t *ctx)
 
 		case SSD1306_FB_POS0:
 			ctx->state = SSD1306_FB_BLT;
-			ctx->fb[ctx->flip][0] = 0x40;
-			r = HAL_I2C_Master_Transmit_DMA(ctx->hi2c, ctx->addr << 1, ctx->fb[ctx->flip], sz + 1);
+			ctx->fb[0] = 0x40;
+			r = HAL_I2C_Master_Transmit_DMA(ctx->hi2c, ctx->addr << 1, ctx->fb, sz + 1);
 			break;
 
 		case SSD1306_FB_IDLE:
@@ -167,25 +162,23 @@ static void SSD1306_run(SSD1306_ctx_t *ctx)
 	SSD1306_cb_complete(ctx);
 }
 
+static inline void SSD1306_char_put_at(SSD1306_ctx_t *ctx, int row, int col, char ch)
+{
+	uint32_t* font = (uint32_t*)(ctx->font_map + ch * ctx->font_width);
+	uint32_t* fb = (uint32_t*)(ctx->fb + row * ctx->width + col * ctx->font_width);
+	fb[0] = font[0];
+	fb[1] = font[1];
+}
+
 static inline void SSD1306_text_cls(SSD1306_ctx_t *ctx)
 {
-	int i;
+	int i, j;
 
-	for(i = 0; i < ctx->text_height * ctx->text_width; i++)
-		ctx->text_buf[i] = ' ';
+	for(i = 0; i < ctx->text_height; i++)
+		for(j = 0; j < ctx->text_height; j++)
+			SSD1306_char_put_at(ctx, i, j, ' ');
 }
 
-static inline void SSD1306_text_blit(SSD1306_ctx_t *ctx)
-{
-	int j, c, f = 1 ^ ctx->flip;
-	uint8_t *buf = ctx->fb[f];
-
-	for(c = 0; c < ctx->text_height * ctx->text_width; c++)
-		for(j = 0; j < ctx->font_width; j++)
-			buf[1 + c * ctx->font_width + j] = ctx->font_map[ctx->text_buf[c] * ctx->font_width + j];
-
-	ctx->flip = f;
-}
 
 static inline void SSD1306_text_put_at(SSD1306_ctx_t *ctx, int row, int col, char* txt)
 {
@@ -195,7 +188,7 @@ static inline void SSD1306_text_put_at(SSD1306_ctx_t *ctx, int row, int col, cha
 		return;
 
 	for(i = col, c = 0; i < ctx->text_width && txt[c]; i++, c++)
-		ctx->text_buf[row * ctx->text_width + i] = txt[c];
+		SSD1306_char_put_at(ctx, row, i, txt[c]);
 }
 
 #endif
