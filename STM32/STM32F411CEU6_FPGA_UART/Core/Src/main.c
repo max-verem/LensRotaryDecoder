@@ -173,7 +173,7 @@ static void W5500_cb_IPConflict(void) {
 static uint8_t W5500_dhcp_buffer[2048];
 
 #define W5500_DHCP_SOCKET     0
-#define W5500_UDP_SOCKET      1
+#define W5500_FREED_SOCKET    1
 
 // ------------------------------------------------
 
@@ -346,7 +346,7 @@ int main(void)
 
   // initial LED pic
   SSD1306_text_cls(&oled1);
-  SSD1306_text_put_at(&oled1, 0, 0, "LensRotaryDecoder" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 0, 0, " LensRotaryDecod" TXT_PAD);
   SSD1306_text_put_at(&oled1, 1, 0, "----------------" TXT_PAD);
   SSD1306_text_put_at(&oled1, 2, 0, " ZOOM:    122321" TXT_PAD);
   SSD1306_text_put_at(&oled1, 3, 0, "FOCUS:    323323" TXT_PAD);
@@ -404,7 +404,7 @@ int main(void)
 	  {
 		  p = 0;
 
-		  SSD1306_text_put_at(&oled2, 1, p, "@"); p++;
+		  SSD1306_text_put_at(&oled2, 1, p, " "); p++;
 
 		  len = dec_unsigned_to_str(net_info.ip[0], tmp);
 		  SSD1306_text_put_at(&oled2, 1, p, tmp); p += len;
@@ -423,11 +423,16 @@ int main(void)
 		  SSD1306_text_put_at(&oled2, 1, p, "        ");
 	  };
 
+	  static uint8_t addr[4] = {255, 255, 255, 255}; //{10, 1, 5, 57};
+	  uint16_t port = 50000 + (cs & 0x00ff);
+	  static uint8_t body[] = "Hello From Rotary Decoder";
+	  socket(W5500_FREED_SOCKET, Sn_MR_UDP, port, 0);
 	  while(1)
 	  {
 		  if(trig_udp)
 		  {
 			  trig_udp = 0;
+			  len = sendto(W5500_FREED_SOCKET, body, sizeof(body), addr, port);
 
 			  W5500_phy = getPHYCFGR();
 			  W5500_id = getVERSIONR();
