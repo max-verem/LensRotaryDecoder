@@ -76,24 +76,6 @@ static void MX_TIM1_Init(void);
 /* USER CODE BEGIN 0 */
 extern USBD_HandleTypeDef hUsbDeviceFS;
 
-#define PACKET_REQ	20
-
-static uint8_t rx_buffers[2][PACKET_REQ];
-static int rx_buf_idx = 0;
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	uint8_t* rx_buffer = rx_buffers[rx_buf_idx];
-
-	/* enqueue receive more */
-	rx_buf_idx = 1 - rx_buf_idx;
-	HAL_UART_Receive_IT(&huart1, rx_buffers[rx_buf_idx], PACKET_REQ);
-
-	/* send to PC */
-	USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS, rx_buffer, PACKET_REQ);
-};
-
-
 int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
 {
 	return (USBD_OK);
@@ -179,31 +161,43 @@ static uint8_t W5500_dhcp_buffer[2048];
 
 #include "W5500_custom.h"
 
-volatile int cs = 0;
+volatile int CS  = 0;
 
 // ------------------------------------------------
+
+volatile static uint32_t cnt_uart = 0, cnt_pkt = 0, cnt_udp = 0;
+volatile static int32_t rot1 = 100, rot2 = 100, rot3 = 100;
+
+// ---------------------------------------------------
 
 volatile int timer_1k_cnt = 0, W5500_phy = 0, W5500_id = 0;
 volatile int demo_c1 = 0, demo_c2 = 0;
 volatile uint8_t demo_c3 = 0, demo_c4;
 volatile uint8_t trig_udp = 0;
+
+#define TIMER_DIV(DIV) if(!(timer_1k_cnt % DIV))
+#define TIMER_DIV_TRIG_UDP		10
+#define TIMER_DIV_BLINK 		250
+#define TIMER_DIV_PHY_STATUS	200
+#define TIMER_DIV_COUNTERS		100
 static void timer_1k_cb(TIM_HandleTypeDef *htim)
 {
 	timer_1k_cnt++;
 
-	if(timer_1k_cnt % 100)
+	TIMER_DIV(TIMER_DIV_TRIG_UDP)
 		trig_udp++;
 
 	if(W5500_init_done)
 	{
 		if(!(timer_1k_cnt % 100))
-			DHCP_time_handler();
+			if(!W5500_ip_assigned)
+				DHCP_time_handler();
 	}
 
-	if(timer_1k_cnt % 500)
+	TIMER_DIV(TIMER_DIV_BLINK)
 		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 
-	if(timer_1k_cnt % 500)
+	TIMER_DIV(TIMER_DIV_PHY_STATUS)
 	{
 		// PHY/DEV state
 	    SSD1306_text_put_at(&oled2, 0,  4, (W5500_phy & 0x04) ? "FULL" : "HALF");
@@ -212,32 +206,129 @@ static void timer_1k_cb(TIM_HandleTypeDef *htim)
 	    SSD1306_text_put_at(&oled2, 0, 0, W5500_id == 0x04 ? "WIZ" : "???");
 	}
 
-	if(timer_1k_cnt % 201)
+	TIMER_DIV(TIMER_DIV_COUNTERS)
 	{
 		int len;
 		char tmp[32];
+		static char running[] = "----------\\\\\\\\\\\\\\\\\\\\|||||||||||//////////";
 
-		len = dec_signed_to_str(demo_c1--, tmp);
+		len = dec_signed_to_str(rot1, tmp);
 		SSD1306_text_put_at(&oled1, 2, 7, "" TXT_PAD);
 		SSD1306_text_put_at(&oled1, 2, 16 - len, tmp);
 
-		len = dec_signed_to_str(demo_c2++, tmp);
+		len = dec_signed_to_str(rot2, tmp);
 		SSD1306_text_put_at(&oled1, 3, 7, "" TXT_PAD);
 		SSD1306_text_put_at(&oled1, 3, 16 - len, tmp);
 
-		len = dec_unsigned_to_str(demo_c3--, tmp);
-		SSD1306_text_put_at(&oled2, 3, 0, "" TXT_PAD);
-		SSD1306_text_put_at(&oled2, 3, 8 - len, tmp);
+		len = dec_signed_to_str(rot3, tmp);
+		SSD1306_text_put_at(&oled1, 4, 7, "" TXT_PAD);
+		SSD1306_text_put_at(&oled1, 4, 16 - len, tmp);
 
-		len = dec_unsigned_to_str(demo_c4++, tmp);
-		SSD1306_text_put_at(&oled2, 3, 8, "" TXT_PAD);
-		SSD1306_text_put_at(&oled2, 3, 16 - len, tmp);
+		len = dec_unsigned_to_str(cnt_uart, tmp);
+		SSD1306_text_put_at(&oled1, 6, 7, "" TXT_PAD);
+		SSD1306_text_put_at(&oled1, 6, 16 - len, tmp);
+
+		len = dec_unsigned_to_str(cnt_pkt, tmp);
+		SSD1306_text_put_at(&oled1, 7, 7, "" TXT_PAD);
+		SSD1306_text_put_at(&oled1, 7, 16 - len, tmp);
+
+		SSD1306_char_put_at(&oled2, 2, 8, running[cnt_udp % sizeof(running)]);
 	};
 }
 
 // ---------------------------------------------------
 
-#ifdef DEBUG
+
+#define UART1_BUF_SIZE 32
+static uint8_t uart1_buf_data[2 * UART1_BUF_SIZE];
+volatile static uint32_t uart1_half_cnt = 0, uart1_full_cnt = 0;
+
+static inline int uart1_packet_find(uint8_t* buf)
+{
+	int i;
+
+	for(i = 0; i < 17; i++)
+		if(buf[i] == 0xDE && buf[i + 1] == 0xC0)
+			return i;
+	return -1;
+}
+
+static inline int uart1_packet_parse(uint8_t* buf)
+{
+	int i;
+	uint32_t cs0, cs1 = 0, r1 = 0, r2 = 0, r3 = 0;
+
+	cs0 = buf[2];
+	cs0 <<= 8;
+	cs0 |= buf[3];
+	cs0 ^= 0x0000FFFF;
+
+	for(i = 4; i < 15; i++)
+	{
+		uint8_t v = buf[i];
+		cs1 += v;
+		switch(i)
+		{
+			case 6:
+			case 7:
+			case 8: r1 <<= 8; r1 |= v; break;
+			case 9:
+			case 10:
+			case 11: r2 <<= 8; r2 |= v; break;
+			case 12:
+			case 13:
+			case 14: r3 <<= 8; r3 |= v; break;
+		}
+	}
+
+	/* checksum */
+	if(cs1 != cs0)
+		return -1;
+
+	/* sign restore */
+	if(r1 & 0x00800000)
+		r1 |= 0xFF000000;
+	if(r2 & 0x00800000)
+		r2 |= 0xFF000000;
+	if(r3 & 0x00800000)
+		r3 |= 0xFF000000;
+
+	/* save data */
+	rot1 = r1;
+	rot2 = r2;
+	rot3 = r3;
+
+	/* correct packet counter */
+	cnt_pkt++;
+
+	return 0;
+}
+
+static void uart1_cb_full(UART_HandleTypeDef *huart)
+{
+	uart1_full_cnt++;
+	cnt_uart++;
+}
+
+static void uart1_cb_half(UART_HandleTypeDef *huart)
+{
+	int r;
+
+	uart1_half_cnt++;
+
+	r = uart1_packet_find(uart1_buf_data);
+	if(r >= 0)
+		uart1_packet_parse(uart1_buf_data + r);
+}
+
+static void uart1_cb_err(UART_HandleTypeDef *huart)
+{
+	uart1_half_cnt++;
+}
+
+// ---------------------------------------------------
+
+#ifdef DEBUG123
 
 #include <stdio.h>
 #include <errno.h>
@@ -296,6 +387,16 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
+  /* setup uart handling */
+  HAL_UART_RegisterCallback(&huart1, HAL_UART_ERROR_CB_ID, uart1_cb_err);
+  HAL_UART_RegisterCallback(&huart1, HAL_UART_ABORT_COMPLETE_CB_ID, uart1_cb_err);
+  HAL_UART_RegisterCallback(&huart1, HAL_UART_ABORT_TRANSMIT_COMPLETE_CB_ID, uart1_cb_err);
+  HAL_UART_RegisterCallback(&huart1, HAL_UART_ABORT_RECEIVE_COMPLETE_CB_ID, uart1_cb_err);
+
+  HAL_UART_RegisterCallback(&huart1, HAL_UART_RX_COMPLETE_CB_ID, uart1_cb_full);
+  HAL_UART_RegisterCallback(&huart1, HAL_UART_RX_HALFCOMPLETE_CB_ID, uart1_cb_half);
+  HAL_UART_Receive_DMA(&huart1, uart1_buf_data, 2 * UART1_BUF_SIZE);
+
   W5500_RST_LOW;
 
   // run oleds
@@ -320,7 +421,7 @@ int main(void)
   // Registering W5500 callbacks...
   reg_wizchip_cs_cbfunc(W5500_Select, W5500_Unselect);
   reg_wizchip_spi_cbfunc(W5500_ReadByte, W5500_WriteByte);
-//  reg_wizchip_spiburst_cbfunc(W5500_ReadBuff, W5500_WriteBuff);
+  reg_wizchip_spiburst_cbfunc(W5500_ReadBuff, W5500_WriteBuff);
 
   // Calling wizchip_init
   uint8_t rx_tx_buff_sizes[] = {2, 2, 2, 2, 2, 2, 2, 2};
@@ -328,12 +429,12 @@ int main(void)
 
   // Calling DHCP_init()
   for(i = 0; i < 12; i++)
-	  cs += *(uint8_t*)(UID_BASE + i);
+	  CS += *(uint8_t*)(UID_BASE + i);
   wiz_NetInfo net_info = {
 #if 0
       .mac  = {0xEA, 0x11, 0x22, 0x33, 0x44, 0xEA},
 #else
-      .mac  = { 0xBA, 0xDE, 0xC0, 0xDE, cs & 0x00FF, 0 },
+      .mac  = { 0xBA, 0xDE, 0xC0, 0xDE, CS & 0x00FF, 0 },
 #endif
       .dhcp = NETINFO_DHCP
   };
@@ -352,12 +453,12 @@ int main(void)
   SSD1306_text_put_at(&oled1, 3, 0, "FOCUS:    323323" TXT_PAD);
   SSD1306_text_put_at(&oled1, 4, 0, " IRIS:   5676575" TXT_PAD);
   SSD1306_text_put_at(&oled1, 5, 0, "----------------" TXT_PAD);
-  SSD1306_text_put_at(&oled1, 6, 0, "FOCUS:    323323" TXT_PAD);
-  SSD1306_text_put_at(&oled1, 7, 0, " IRIS:   5676575" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 6, 0, "UARTs:    323323" TXT_PAD);
+  SSD1306_text_put_at(&oled1, 7, 0, " PKTs:   5676575" TXT_PAD);
 
   SSD1306_text_cls(&oled2);
   SSD1306_text_put_at(&oled2, 0, 0, "---:XXXX|XXX|XXX" TXT_PAD);
-  SSD1306_text_put_at(&oled2, 1, 0, " --dhcp query-- ");
+  SSD1306_text_put_at(&oled2, 3, 0, " --dhcp query-- ");
 
   /* show MAC address */
   for(p = 0, i = 0; i < 6; i++)
@@ -368,9 +469,9 @@ int main(void)
 	  tmp[p++] = ':';
   }
   tmp[p++] = 0;
-  SSD1306_text_put_at(&oled2, 2, 0, tmp);
+  SSD1306_text_put_at(&oled2, 1, 0, tmp);
 
-  SSD1306_text_put_at(&oled2, 3, 0, "................" TXT_PAD);
+  SSD1306_text_put_at(&oled2, 2, 0, "                " TXT_PAD);
 
   // timer task
   HAL_TIM_RegisterCallback(&htim1, HAL_TIM_PERIOD_ELAPSED_CB_ID, timer_1k_cb);
@@ -404,38 +505,67 @@ int main(void)
 	  {
 		  p = 0;
 
-		  SSD1306_text_put_at(&oled2, 1, p, " "); p++;
+		  SSD1306_text_put_at(&oled2, 3, p, " "); p++;
 
 		  len = dec_unsigned_to_str(net_info.ip[0], tmp);
-		  SSD1306_text_put_at(&oled2, 1, p, tmp); p += len;
-		  SSD1306_text_put_at(&oled2, 1, p, "."); p++;
+		  SSD1306_text_put_at(&oled2, 3, p, tmp); p += len;
+		  SSD1306_text_put_at(&oled2, 3, p, "."); p++;
 
 		  len = dec_unsigned_to_str(net_info.ip[1], tmp);
-		  SSD1306_text_put_at(&oled2, 1, p, tmp); p += len;
-		  SSD1306_text_put_at(&oled2, 1, p, "."); p++;
+		  SSD1306_text_put_at(&oled2, 3, p, tmp); p += len;
+		  SSD1306_text_put_at(&oled2, 3, p, "."); p++;
 
 		  len = dec_unsigned_to_str(net_info.ip[2], tmp);
-		  SSD1306_text_put_at(&oled2, 1, p, tmp); p += len;
-		  SSD1306_text_put_at(&oled2, 1, p, "."); p++;
+		  SSD1306_text_put_at(&oled2, 3, p, tmp); p += len;
+		  SSD1306_text_put_at(&oled2, 3, p, "."); p++;
 
 		  len = dec_unsigned_to_str(net_info.ip[3], tmp);
-		  SSD1306_text_put_at(&oled2, 1, p, tmp); p += len;
-		  SSD1306_text_put_at(&oled2, 1, p, "        ");
+		  SSD1306_text_put_at(&oled2, 3, p, tmp); p += len;
+		  SSD1306_text_put_at(&oled2, 3, p, "        ");
 	  };
 
 	  static uint8_t addr[4] = {255, 255, 255, 255}; //{10, 1, 5, 57};
-	  uint16_t port = 50000 + (cs & 0x00ff);
-	  static uint8_t body[] = "Hello From Rotary Decoder";
+	  uint16_t port = 50000 + (CS & 0x00ff);
+	  static uint8_t buf[29] = {0};
 	  socket(W5500_FREED_SOCKET, Sn_MR_UDP, port, 0);
+	  trig_udp = 0;
 	  while(1)
 	  {
 		  if(trig_udp)
 		  {
 			  trig_udp = 0;
-			  len = sendto(W5500_FREED_SOCKET, body, sizeof(body), addr, port);
+			  cnt_udp++;
+			  {
+				  uint32_t v;
+				  uint8_t cs = 0x40;
+
+				  cs -= buf[0] = 0xD1;
+				  cs -= buf[1] = (CS & 0x00ff);
+
+				  v = rot1;
+				  cs -= buf[20] = v >> 16;
+				  cs -= buf[21] = v >>  8;
+				  cs -= buf[22] = v >>  0;
+
+				  v = rot2;
+				  cs -= buf[23] = v >> 16;
+				  cs -= buf[24] = v >>  8;
+				  cs -= buf[25] = v >>  0;
+
+				  v = rot3;
+				  cs -= buf[26] = v >>  8;
+				  cs -= buf[27] = v >>  0;
+
+				  buf[28] = cs;
+			  }
+
+			  len = sendto(W5500_FREED_SOCKET, buf, sizeof(buf), addr, port);
 
 			  W5500_phy = getPHYCFGR();
 			  W5500_id = getVERSIONR();
+
+			  if(trig_udp)
+				  trig_udp++;
 		  };
 	  }
   }
@@ -576,7 +706,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -610,9 +740,9 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 96;
+  htim1.Init.Prescaler = 95;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 1000;
+  htim1.Init.Period = 999;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
