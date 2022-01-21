@@ -111,6 +111,8 @@ SSD1306_DEF(hi2c2, oled2, OLED2_I2C_ADDR, OLED2_SCREEN_WIDTH, OLED2_SCREEN_HEIGH
 
 // -----------------------------------------------------------------------
 
+#define W5500_SPI hspi1
+
 #include "socket.h"
 #include "dhcp.h"
 
@@ -123,11 +125,11 @@ static void W5500_Unselect(void) {
 }
 
 static void W5500_ReadBuff(uint8_t* buff, uint16_t len) {
-    HAL_SPI_Receive(&hspi1, buff, len, HAL_MAX_DELAY);
+    HAL_SPI_Receive(&W5500_SPI, buff, len, HAL_MAX_DELAY);
 }
 
 static void W5500_WriteBuff(uint8_t* buff, uint16_t len) {
-    HAL_SPI_Transmit(&hspi1, buff, len, HAL_MAX_DELAY);
+    HAL_SPI_Transmit(&W5500_SPI, buff, len, HAL_MAX_DELAY);
 }
 
 static uint8_t W5500_ReadByte(void) {
