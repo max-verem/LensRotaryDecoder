@@ -53,6 +53,9 @@ static const char short_options [] = "h";
 static const struct option long_options [] =
 {
     { "ws-port",                        required_argument, NULL, 174},
+    { "freed-target",                   required_argument, NULL, 178},
+    { "freed-div",                      required_argument, NULL, 176},
+    { "freed-id",                       required_argument, NULL, 177},
 
     DEFAULT_INSTANCE_LONG_OPTS
 };
@@ -84,6 +87,17 @@ int instance_opts(instance_t* instance, int argc, char** argv)
         {
             case 174:   /* --ws-port */
                 ST_INT(ws.port);
+
+            case 176:
+                ST_INT(freed.div);
+
+            case 177:
+                ST_INT(freed.id);
+
+            case 178:
+                if(instance->freed.cnt < MAX_FREED_TARGETS)
+                    strncpy(instance->freed.targets[instance->freed.cnt++], optarg, PATH_MAX);
+                break;
 
             DEFAULT_INSTANCE_SET_OPTS
         };

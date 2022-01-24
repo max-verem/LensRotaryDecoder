@@ -15,10 +15,12 @@ AM_CPPFLAGS = -fms-extensions \
 bin_PROGRAMS = ez_usb_rot_dec
 
 ez_usb_rot_dec_SOURCES = \
+    $(top_srcdir)/src/common/FreeD.c \
     $(top_srcdir)/src/common/utils.c \
     $(top_srcdir)/src/common/strl.c \
     $(top_srcdir)/src/common/logger.c \
     $(top_srcdir)/src/common/demonize.c \
+    freed_sender.c \
     instance.c \
     main.c \
     ez_usb_rot_dec.c

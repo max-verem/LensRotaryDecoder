@@ -14,11 +14,13 @@ extern "C"
 #include "common/instance.h"
 
 #define PRODUCT_NAME "ez_usb_rot_dec"
-#define PRODUCT_STRING PRODUCT_NAME "-" GITVERSION ", Copyright by Maksym Veremeyenko (c) 2021"
+#define PRODUCT_STRING PRODUCT_NAME "-" GITVERSION ", Copyright by Maksym Veremeyenko (c) 2022"
 
 #define WS_LISTEN_PORT          8070
 
 #define MAX_TRANSFER_CNT        2048
+
+#define MAX_FREED_TARGETS       8
 
 typedef struct instance_desc
 {
@@ -46,6 +48,13 @@ typedef struct instance_desc
         int64_t samples, counters[3];
         uint8_t prev[3];
     } decoder;
+
+    struct
+    {
+        int div, id
+        uint64_t cnt;
+        char targets[MAX_FREED_TARGETS][PATH_MAX];
+    } freed;
 
     DEFAULT_INSTANCE_PARAMS
 } instance_t;

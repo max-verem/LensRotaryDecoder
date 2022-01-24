@@ -27,6 +27,7 @@ enum
     LENS_PARAM_LAST
 };
 
+#define MAX_FREED_TARGETS       8
 
 typedef struct instance_desc
 {
@@ -41,6 +42,13 @@ typedef struct instance_desc
 //        ws_queue_t main;
         char tmp[PATH_MAX];
     } ws;
+
+    struct
+    {
+        int div, id;
+        uint64_t cnt;
+        char targets[MAX_FREED_TARGETS][PATH_MAX];
+    } freed;
 
     int32_t values[LENS_PARAM_LAST];
     uint32_t stat[2];

@@ -139,7 +139,7 @@ static void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 
             /* enqueu transfer for processing */
             instance->xfr.queue1_data[instance->xfr.queue1_count++] = xfr;
-            pthread_cond_signal(&instance->xfr.cond);
+            pthread_cond_broadcast(&instance->xfr.cond);
 
             /* enqueu buffers for transfers */
             for(i = 0; i < instance->xfr.queue2_count; i++)

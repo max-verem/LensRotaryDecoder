@@ -15,6 +15,7 @@ AM_CPPFLAGS = -fms-extensions \
 bin_PROGRAMS = stm32_rot_dec_3x1
 
 stm32_rot_dec_3x1_SOURCES = \
+    $(top_srcdir)/src/common/FreeD.c \
     $(top_srcdir)/src/common/utils.c \
     $(top_srcdir)/src/common/strl.c \
     $(top_srcdir)/src/common/logger.c \

@@ -13,6 +13,7 @@
 #include "common/demonize.h"
 
 #include "ez_usb_rot_dec.h"
+#include "freed_sender.h"
 
 static int f_exit = 0;
 
@@ -46,6 +47,7 @@ int main(int argc, char** argv)
     int r;
     instance_t *instance;
     pthread_t th_ez_usb;
+    pthread_t th_freed_sender;
 
     /* init instance */
     instance_init(&instance);
@@ -85,6 +87,9 @@ int main(int argc, char** argv)
         /* run ez_usb */
         pthread_create(&th_ez_usb, 0, ez_usb_reader_proc, instance);
 
+        /* run freed_sender */
+        pthread_create(&th_freed_sender, 0, freed_sender_proc, instance);
+
         /* start ws */
 //        ws_server_run(instance);
 
@@ -103,8 +108,11 @@ int main(int argc, char** argv)
         /* stop ws */
 //        ws_server_finish(instance);
 
-        /* wait for vrpn threads */
+        /* wait for ez-usb reader finished */
         pthread_join(th_ez_usb, NULL);
+
+        /* wait for freed_sender */
+        pthread_join(th_freed_sender, NULL);
 
         pthread_mutex_destroy(&instance->lock);
 

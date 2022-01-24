@@ -9,6 +9,10 @@
 #include <string.h>
 #include <iconv.h>
 
+#include <sys/types.h>          /* See NOTES */
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
 #include <hidapi.h>
 
 #include "common/strl.h"
@@ -17,6 +21,8 @@
 #include "common/logger.h"
 
 #include "stm32_rot_dec_3x1.h"
+
+#include "common/FreeD.h"
 
 #define VID 0x05df
 #define PID 0x16c0
@@ -65,13 +71,61 @@ const unsigned int
 
 void* stm32_rot_dec_proc(void* p)
 {
-    int res;
+    int res, i, freed_socket, freed_socket_broadcast = 1;
     instance_t* instance = (instance_t*)p;
     char str[MAX_STR];
     wchar_t wstr[MAX_STR];
     unsigned char buf[MAX_BUF_READ];
+    FreeD_D1_t freed;
+    unsigned char buf_packet[FREE_D_D1_PACKET_SIZE];
+    struct sockaddr_in addrs[MAX_FREED_TARGETS];
 
     logger_printf(0, "%s: Entering....", __FUNCTION__);
+
+    memset(addrs, 0, sizeof(addrs));
+    memset(&freed, 0, sizeof(FreeD_D1_t));
+
+    if(instance->freed.div < 1) instance->freed.div = 1;
+
+    /* init socket */
+    freed_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (freed_socket <= 0)
+    {
+        logger_printf(0, "%s: socket failed", __FUNCTION__);
+        return NULL;
+    };
+    setsockopt(freed_socket, SOL_SOCKET, SO_BROADCAST, &freed_socket_broadcast, sizeof(freed_socket_broadcast));
+
+    /* prepare addr struct */
+    for(i = 0; i < instance->freed.cnt; i++)
+    {
+        char *port, *host;
+        struct sockaddr_in *addr = &addrs[i];
+
+        if(!instance->freed.targets[i][0])
+            continue;
+
+        /* reset addr */
+        addr->sin_family = 0;
+
+        /* parse target */
+        host = strdup(instance->freed.targets[i]);
+        logger_printf(1, "%s: new target [%s]", __FUNCTION__, host);
+        port = strrchr(host, ':');
+        if(port)
+        {
+            memset(addr, 0, sizeof(struct sockaddr_in));
+
+            *port = 0; port++;
+
+            /* prepare address */
+            addr->sin_family = AF_INET;
+            addr->sin_addr.s_addr = inet_addr(host);
+            addr->sin_port = htons((unsigned short)atoi(port));
+        };
+
+        free(host);
+    };
 
     while(!(*instance->p_exit))
     {
@@ -180,14 +234,53 @@ void* stm32_rot_dec_proc(void* p)
                 v2 >>= 8;
 
                 pthread_mutex_lock(&instance->lock);
-                instance->values[0] = v0;
-                instance->values[1] = v1;
-                instance->values[2] = v2;
+                instance->values[LENS_PARAM_ZOOM] = v0;
+                instance->values[LENS_PARAM_FOCUS] = v1;
+                instance->values[LENS_PARAM_IRIS] = v2;
                 instance->stat[0] = recv[4];
                 instance->stat[1] = recv[5];
                 pthread_mutex_unlock(&instance->lock);
 
                 memcpy(buf, recv, MAX_BUF_READ);
+
+                /* inc freed divider */
+                instance->freed.cnt++;
+
+                /* check if packet should be sent */
+                if(!(instance->freed.cnt % instance->freed.div))
+                {
+                    int Iris;
+
+                    /* prepare struct */
+                    Iris = instance->values[LENS_PARAM_IRIS];
+                    freed.Zoom = instance->values[LENS_PARAM_ZOOM];
+                    freed.Focus = instance->values[LENS_PARAM_FOCUS];
+                    freed.Spare[0] = (Iris >> 8) && 0x00FF;
+                    freed.Spare[1] = (Iris >> 0) && 0x00FF;
+                    freed.ID = instance->freed.id;
+
+                    /* build packet */
+                    FreeD_D1_pack(buf_packet, FREE_D_D1_PACKET_SIZE, &freed);
+
+                    /* send packet to targets */
+                    for(i = 0; i < MAX_FREED_TARGETS; i++)
+                    {
+                        struct sockaddr_in *addr = &addrs[i];
+
+                        if(!addr->sin_family)
+                            continue;
+
+                        sendto
+                        (
+                            freed_socket,               /* Socket to send result */
+                            (char*)buf_packet,          /* The datagram buffer */
+                            sizeof(buf_packet),         /* The datagram lngth */
+                            0,                          /* Flags: no options */
+                            (struct sockaddr *)addr ,   /* addr */
+                            sizeof(struct sockaddr_in)  /* Server address length */
+                        );
+                    };
+                };
             };
         };
 
