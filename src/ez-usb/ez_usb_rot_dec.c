@@ -139,7 +139,6 @@ static void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 
             /* enqueu transfer for processing */
             instance->xfr.queue1_data[instance->xfr.queue1_count++] = xfr;
-            pthread_cond_broadcast(&instance->xfr.cond);
 
             /* enqueu buffers for transfers */
             for(i = 0; i < instance->xfr.queue2_count; i++)
@@ -156,6 +155,8 @@ static void callbackUSBTransferComplete(struct libusb_transfer *xfr)
             };
 
             instance->xfr.queue2_count = 0;
+
+            pthread_cond_broadcast(&instance->xfr.cond);
 
             pthread_mutex_unlock(&instance->lock);
         };
@@ -199,7 +200,7 @@ static void* counter_proc(void* p)
         pthread_mutex_lock(&instance->lock);
         clock_gettime(CLOCK_REALTIME, &to);
         to.tv_sec += 1;
-        while(!instance->xfr.queue1_count && !instance->xfr.errors)
+        while(!instance->xfr.queue1_count && !instance->xfr.errors && !(*instance->p_exit))
             pthread_cond_timedwait(&instance->xfr.cond, &instance->lock, &to);
         if(!instance->xfr.errors)
         {

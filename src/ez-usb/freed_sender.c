@@ -20,7 +20,7 @@
 void* freed_sender_proc(void* p)
 {
     FreeD_D1_t freed;
-    int i, freed_socket;
+    int r, i, freed_socket;
     unsigned char buf_packet[FREE_D_D1_PACKET_SIZE];
     instance_t* instance = (instance_t*)p;
     struct sockaddr_in addrs[MAX_FREED_TARGETS];
@@ -41,7 +41,7 @@ void* freed_sender_proc(void* p)
     };
 
     /* prepare addr struct */
-    for(i = 0; i < instance->freed.cnt; i++)
+    for(i = 0; i < instance->freed.trgs; i++)
     {
         char *port, *host;
         struct sockaddr_in *addr = &addrs[i];
@@ -81,11 +81,11 @@ void* freed_sender_proc(void* p)
         pthread_mutex_lock(&instance->lock);
         clock_gettime(CLOCK_REALTIME, &to);
         to.tv_sec += 1;
-        while(!(*instance->p_exit))
-            pthread_cond_timedwait(&instance->xfr.cond, &instance->lock, &to);
+        r = pthread_cond_timedwait(&instance->xfr.cond, &instance->lock, &to);
         pthread_mutex_unlock(&instance->lock);
 
         instance->freed.cnt++;
+
         if(instance->freed.cnt % instance->freed.div)
             continue;
 
@@ -108,7 +108,7 @@ void* freed_sender_proc(void* p)
             if(!addr->sin_family)
                 continue;
 
-            sendto
+            r = sendto
             (
                 freed_socket,               /* Socket to send result */
                 (char*)buf_packet,          /* The datagram buffer */
@@ -117,6 +117,11 @@ void* freed_sender_proc(void* p)
                 (struct sockaddr *)addr ,   /* addr */
                 sizeof(struct sockaddr_in)  /* Server address length */
             );
+            if(r < 0)
+            {
+                r = errno;
+                logger_printf(1, "%s: sendto(%s) failed, r=%d", __FUNCTION__, instance->freed.targets[i], r);
+            };
         };
     };
 

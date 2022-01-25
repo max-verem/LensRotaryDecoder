@@ -51,7 +51,7 @@ typedef struct instance_desc
 
     struct
     {
-        int div, id
+        int div, id, trgs;
         uint64_t cnt;
         char targets[MAX_FREED_TARGETS][PATH_MAX];
     } freed;

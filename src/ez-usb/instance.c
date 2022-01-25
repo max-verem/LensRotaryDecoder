@@ -95,8 +95,8 @@ int instance_opts(instance_t* instance, int argc, char** argv)
                 ST_INT(freed.id);
 
             case 178:
-                if(instance->freed.cnt < MAX_FREED_TARGETS)
-                    strncpy(instance->freed.targets[instance->freed.cnt++], optarg, PATH_MAX);
+                if(instance->freed.trgs < MAX_FREED_TARGETS)
+                    strncpy(instance->freed.targets[instance->freed.trgs++], optarg, PATH_MAX);
                 break;
 
             DEFAULT_INSTANCE_SET_OPTS
