@@ -119,6 +119,9 @@ int instance_usage(instance_t* instance)
         "    "PRODUCT_NAME" [args]\n"
         "Where args:\n"
         "    --ws-port=<N>                          websocket port\n"
+        "    --freed-target=<IP:PORT>               target host/port to send packet\n"
+        "    --freed-div=<N>                        source (usb packet transfer task) freq devider\n"
+        "    --freed-id=<N>                         camera-id field value in FreeD packet\n"
         DEFAULT_INSTANCE_USAGE
     );
 
