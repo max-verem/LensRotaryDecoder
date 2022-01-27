@@ -409,8 +409,10 @@ int main(void)
   // run oleds
   SSD1306_oled1_init();
   SSD1306_run(&oled1);
+ /*
   SSD1306_oled2_init();
   SSD1306_run(&oled2);
+ */
 
   // OLED WELCOME
   SSD1306_text_cls(&oled1);

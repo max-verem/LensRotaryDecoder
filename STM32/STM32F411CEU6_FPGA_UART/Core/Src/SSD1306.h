@@ -157,6 +157,9 @@ static void SSD1306_run(SSD1306_ctx_t *ctx)
 	HAL_I2C_RegisterCallback(ctx->hi2c, HAL_I2C_MASTER_TX_COMPLETE_CB_ID, ctx->cb_complete_proc);
 	HAL_I2C_RegisterCallback(ctx->hi2c, HAL_I2C_ERROR_CB_ID, ctx->cb_error_proc);
 	HAL_I2C_RegisterCallback(ctx->hi2c, HAL_I2C_ABORT_CB_ID, ctx->cb_error_proc);
+	HAL_I2C_RegisterCallback(ctx->hi2c, HAL_I2C_MEM_RX_COMPLETE_CB_ID, ctx->cb_error_proc);
+	HAL_I2C_RegisterCallback(ctx->hi2c, HAL_I2C_MEM_TX_COMPLETE_CB_ID, ctx->cb_error_proc);
+	HAL_I2C_RegisterCallback(ctx->hi2c, HAL_I2C_LISTEN_COMPLETE_CB_ID, ctx->cb_error_proc);
 
 	// run loop
 	SSD1306_cb_complete(ctx);
