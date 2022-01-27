@@ -4,11 +4,11 @@
 ![schematic](images/EZ-USB_motherboard.svg)
 
 ## PCB
-![schematic](images/EZ-USB_motherboard-brd.svg)
+![pcb](images/pcb.png)
 
 ## GERBER
 You can download [gerber archive here](gerber/)
 
 ## Final board
-![schematic](images/img1.jpg)
-![schematic](images/img2.jpg)
+![view 1](images/img1.jpg)
+![view 2](images/img2.jpg)
