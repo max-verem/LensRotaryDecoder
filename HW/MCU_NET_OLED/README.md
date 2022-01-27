@@ -14,8 +14,8 @@ This version cover both cases:
 
 ## Firmware
 
-* [rotary decoder firmware source](../STM32/STM32F411CEU6_RotaryDecoder_3X)
-* [NET OLED interface](../STM32/STM32F411CEU6_FPGA_UART)
+* [rotary decoder firmware source](../../STM32/STM32F411CEU6_RotaryDecoder_3X)
+* [NET OLED interface firmware source](../../STM32/STM32F411CEU6_FPGA_UART)
 
 ## Hardcoded things
 
