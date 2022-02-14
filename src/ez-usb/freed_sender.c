@@ -20,7 +20,7 @@
 void* freed_sender_proc(void* p)
 {
     FreeD_D1_t freed;
-    int r, i, freed_socket;
+    int r, i, freed_socket, freed_socket_broadcast = 1;
     unsigned char buf_packet[FREE_D_D1_PACKET_SIZE];
     instance_t* instance = (instance_t*)p;
     struct sockaddr_in addrs[MAX_FREED_TARGETS];
@@ -39,6 +39,7 @@ void* freed_sender_proc(void* p)
         logger_printf(0, "%s: socket failed", __FUNCTION__);
         return NULL;
     };
+    setsockopt(freed_socket, SOL_SOCKET, SO_BROADCAST, &freed_socket_broadcast, sizeof(freed_socket_broadcast));
 
     /* prepare addr struct */
     for(i = 0; i < instance->freed.trgs; i++)
