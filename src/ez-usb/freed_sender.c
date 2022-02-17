@@ -82,7 +82,7 @@ void* freed_sender_proc(void* p)
         pthread_mutex_lock(&instance->lock);
         clock_gettime(CLOCK_REALTIME, &to);
         to.tv_sec += 1;
-        r = pthread_cond_timedwait(&instance->xfr.cond, &instance->lock, &to);
+        r = pthread_cond_timedwait(&instance->cond, &instance->lock, &to);
         pthread_mutex_unlock(&instance->lock);
 
         instance->freed.cnt++;

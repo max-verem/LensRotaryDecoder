@@ -84,6 +84,9 @@ int main(int argc, char** argv)
             pthread_mutexattr_destroy(&mta);
         };
 
+        /* init conditional variable */
+        pthread_cond_init(&instance->cond, NULL);
+
         /* run ez_usb */
         pthread_create(&th_ez_usb, 0, ez_usb_reader_proc, instance);
 
@@ -115,6 +118,8 @@ int main(int argc, char** argv)
         pthread_join(th_freed_sender, NULL);
 
         pthread_mutex_destroy(&instance->lock);
+
+        pthread_cond_destroy(&instance->cond);
 
         instance_release(&instance);
 
