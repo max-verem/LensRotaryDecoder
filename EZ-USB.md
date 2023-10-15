@@ -11,4 +11,11 @@ Lens **Canon HJ14ex4.3B** has output that can provide information from internal 
 * Logic analizer connected by USB cable mini-pc
 * [Software](src/ez-usb/) that perform decoding of raw data received from lens installed on mini pc. After decoding, it compose Free-D packets sent to reciever (render station or [lens calibrarting server](https://github.com/max-verem/VRPN-LensCalibration))
 
+# Final device
+for final device standart case was used:
+
+![view1](images/ez_usb_case1.jpg)
+
+![view1](images/ez_usb_case2.jpg)
+
 

@@ -156,7 +156,7 @@ static void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 
             instance->xfr.queue2_count = 0;
 
-            pthread_cond_broadcast(&instance->xfr.cond);
+            pthread_cond_broadcast(&instance->cond);
 
             pthread_mutex_unlock(&instance->lock);
         };
@@ -201,7 +201,7 @@ static void* counter_proc(void* p)
         clock_gettime(CLOCK_REALTIME, &to);
         to.tv_sec += 1;
         while(!instance->xfr.queue1_count && !instance->xfr.errors && !(*instance->p_exit))
-            pthread_cond_timedwait(&instance->xfr.cond, &instance->lock, &to);
+            pthread_cond_timedwait(&instance->cond, &instance->lock, &to);
         if(!instance->xfr.errors)
         {
             xfr = instance->xfr.queue1_data[0];
@@ -265,9 +265,6 @@ void* ez_usb_reader_proc(void* p)
     libusb_device **list;
     size_t count, i;
 
-    /* init conditional variable */
-    pthread_cond_init(&instance->xfr.cond, NULL);
-
 retr:
 
     logger_printf(0, "%s: Searching for %.4X:%.4X", __FUNCTION__, VID, PID);
@@ -318,6 +315,7 @@ retr:
                 if(!command_get_fw_version(dev_handle, &vi) && !command_get_revid_version(dev_handle, &revid))
                 {
                     struct libusb_transfer *xfrs[MAX_TRANSFER_CNT];
+                    unsigned char *xfrs_buffers[MAX_TRANSFER_CNT];
 
                     logger_printf(1, "%s: fw_version Major=%.2X, Minor=%.2X, revision %.2X", __FUNCTION__, vi.major, vi.minor, revid);
 
@@ -339,6 +337,7 @@ retr:
                             break;
                         };
                         xfrs[i] = xfr;
+                        xfrs_buffers[i] = data;
                     };
 
                     if(!ret)
@@ -406,8 +405,8 @@ retr:
 
                     for(i = 0; i < TRANSFER_CNT; i++)
                     {
-                        free(xfrs[i]->buffer);
                         libusb_free_transfer(xfrs[i]);
+                        free(xfrs_buffers[i]);
                     };
                 };
 
@@ -425,9 +424,6 @@ retr:
         sleep(1);
         goto retr;
     };
-
-    /* init conditional variable */
-    pthread_cond_destroy(&instance->xfr.cond);
 
     logger_printf(1, "%s: bye", __FUNCTION__);
 

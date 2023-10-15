@@ -26,6 +26,7 @@ typedef struct instance_desc
 {
     /* lock */
     pthread_mutex_t lock;
+    pthread_cond_t cond;
 
     struct
     {
@@ -38,7 +39,6 @@ typedef struct instance_desc
 
     struct
     {
-        pthread_cond_t cond;
         int queue1_count, queue2_count, errors;
         void *queue1_data[MAX_TRANSFER_CNT], *queue2_data[MAX_TRANSFER_CNT];
     } xfr;
