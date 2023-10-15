@@ -6,7 +6,7 @@
     <WorkspacePath>D:\projects\LensRotaryDecoder.git\STM32\STM32F411CEU6_FPGA_UART\</WorkspacePath>
     <underRoot>true</underRoot>
     <TrustZone>0</TrustZone>
-    <HAL_Driver>C:\Users\verem\STM32Cube\Repository\STM32Cube_FW_F4_V1.26.2</HAL_Driver>
+    <HAL_Driver>C:\Users\verem\STM32Cube\Repository\STM32Cube_FW_F4_V1.27.1</HAL_Driver>
     <CMSIS>Drivers/CMSIS</CMSIS>
     <Toolchain>STM32CubeIDE</Toolchain>
     <IocFile>STM32F411CEU6_FPGA_UART.ioc</IocFile>
@@ -14,86 +14,7 @@
       <ProjectName>STM32F411CEU6_FPGA_UART</ProjectName>
       <ProjectNature>C</ProjectNature>
       <Secure />
-      <filestoremove>
-        <file>
-          <name>Core\Src\stm32h7xx_it.c</name>
-        </file>
-        <file>
-          <name>..\Src\custom.c</name>
-        </file>
-        <file>
-          <name>Core\Src\stm32h7xx_hal_msp.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_cortex.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_tim.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_tim_ex.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_rcc.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_rcc_ex.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_flash.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_flash_ex.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_gpio.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_hsem.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_dma.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_dma_ex.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_mdma.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_pwr.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_pwr_ex.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_i2c.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_i2c_ex.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_exti.c</name>
-        </file>
-        <file>
-          <name>Drivers\CMSIS\Device\ST\STM32H7xx\Source\Templates\system_stm32h7xx.c</name>
-        </file>
-        <file>
-          <name>Core\Src\system_stm32h7xx.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_pcd.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_pcd_ex.c</name>
-        </file>
-        <file>
-          <name>Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_ll_usb.c</name>
-        </file>
-      </filestoremove>
+      <filestoremove />
       <sourceEntriesToRemove>
         <sourceEntry />
       </sourceEntriesToRemove>
@@ -106,15 +27,16 @@
           <cpucore>Arm Cortex-M4</cpucore>
           <fpu>SP</fpu>
           <memories>
-            <memory access="xrw" name="RAM" size="128" start="0x20000000" />
-            <memory access="rx" name="FLASH" size="512" start="0x8000000" />
+            <memory access="xrw" name="RAM" size="131072" start="0x20000000" />
+            <memory access="rx" name="FLASH" size="524288" start="0x8000000" />
           </memories>
-          <startup>C:\Users\verem\STM32Cube\Repository\STM32Cube_FW_F4_V1.26.2\Drivers\CMSIS\Device\ST\STM32F4xx\Source\Templates\gcc\startup_stm32f411xe.s</startup>
+          <startup>C:\Users\verem\STM32Cube\Repository\STM32Cube_FW_F4_V1.27.1\Drivers\CMSIS\Device\ST\STM32F4xx\Source\Templates\gcc\startup_stm32f411xe.s</startup>
           <LinkSettings>
             <LinkAdditionalLibs />
           </LinkSettings>
           <heapSize>0x200</heapSize>
           <stackSize>0x400</stackSize>
+          <cpuclock>96</cpuclock>
           <board>custom</board>
           <debugprobe>swd</debugprobe>
           <optimization />
@@ -142,7 +64,6 @@
             <Adefines />
             <Cdefines>
               <define>USE_FULL_LL_DRIVER</define>
-              <define>MBEDTLS_CONFIG_FILE="mbedtls_config.h"</define>
               <define>USE_FULL_ASSERT=1U</define>
             </Cdefines>
             <Ldefines />

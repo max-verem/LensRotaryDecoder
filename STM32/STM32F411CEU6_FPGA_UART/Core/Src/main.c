@@ -23,6 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "app.h"
 #include "usbd_customhid.h"
 /* USER CODE END Includes */
 
@@ -78,259 +79,6 @@ static void MX_SPI2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern USBD_HandleTypeDef hUsbDeviceFS;
-
-int8_t CUSTOM_HID_OutEvent_FS_main(uint8_t* buf)
-{
-	return (USBD_OK);
-};
-
-#define FONT_WIDTH 8
-#define FONT_HEIGHT 8
-static uint8_t font[] =
-{
-#include "08UKRSTD.h"
-		0
-};
-
-#include "SSD1306.h"
-
-#define OLED1_I2C_ADDR 0x3C
-#define OLED1_SCREEN_WIDTH 128
-#define OLED1_SCREEN_HEIGHT 64
-SSD1306_DEF(hi2c1, oled1, OLED1_I2C_ADDR, OLED1_SCREEN_WIDTH, OLED1_SCREEN_HEIGHT, FONT_WIDTH, FONT_HEIGHT, font);
-
-#define OLED2_I2C_ADDR 0x3C
-#define OLED2_SCREEN_WIDTH 128
-#define OLED2_SCREEN_HEIGHT 32
-SSD1306_DEF(hi2c2, oled2, OLED2_I2C_ADDR, OLED2_SCREEN_WIDTH, OLED2_SCREEN_HEIGHT, FONT_WIDTH, FONT_HEIGHT, font);
-
-#define TXT_PAD "                          "
-
-#include "int2text.h"
-
-// -----------------------------------------------------------------------
-
-#define W5500_SPI hspi1
-
-#include "socket.h"
-#include "dhcp.h"
-
-static void W5500_Select(void) {
-	HAL_GPIO_WritePin(W5500_SCS_GPIO_Port, W5500_SCS_Pin,  GPIO_PIN_RESET);
-}
-
-static void W5500_Unselect(void) {
-    HAL_GPIO_WritePin(W5500_SCS_GPIO_Port, W5500_SCS_Pin,  GPIO_PIN_SET);
-}
-
-static void W5500_ReadBuff(uint8_t* buff, uint16_t len) {
-    HAL_SPI_Receive(&W5500_SPI, buff, len, HAL_MAX_DELAY);
-}
-
-static void W5500_WriteBuff(uint8_t* buff, uint16_t len) {
-    HAL_SPI_Transmit(&W5500_SPI, buff, len, HAL_MAX_DELAY);
-}
-
-static uint8_t W5500_ReadByte(void) {
-    uint8_t byte = 0xFF;
-    W5500_ReadBuff(&byte, sizeof(byte));
-    return byte;
-}
-
-static void W5500_WriteByte(uint8_t byte) {
-    W5500_WriteBuff(&byte, sizeof(byte));
-}
-
-volatile int W5500_ip_assigned = 0;
-volatile int W5500_dhcp_retry = 0;
-volatile int W5500_init_done = 0;
-
-volatile wiz_NetInfo *p_net_info;
-static void W5500_cb_IPAssigned(void) {
-    W5500_ip_assigned = 1;
-    getIPfromDHCP((uint8_t*)p_net_info->ip);
-    getGWfromDHCP((uint8_t*)p_net_info->gw);
-    getSNfromDHCP((uint8_t*)p_net_info->sn);
-}
-
-static void W5500_cb_IPConflict(void) {
-	W5500_ip_assigned = 0;
-}
-
-static uint8_t W5500_dhcp_buffer[2048];
-
-#define W5500_DHCP_SOCKET     0
-#define W5500_FREED_SOCKET    1
-
-// ------------------------------------------------
-
-#include "W5500_custom.h"
-
-volatile int CS  = 0;
-
-// ------------------------------------------------
-
-volatile static uint32_t cnt_uart = 0, cnt_pkt = 0, cnt_udp = 0;
-volatile static int32_t rot1 = 100, rot2 = 100, rot3 = 100;
-
-// ---------------------------------------------------
-
-volatile int timer_1k_cnt = 0, W5500_phy = 0, W5500_id = 0;
-volatile int demo_c1 = 0, demo_c2 = 0;
-volatile uint8_t demo_c3 = 0, demo_c4;
-volatile uint8_t trig_udp = 0;
-
-#define TIMER_DIV(DIV) if(!(timer_1k_cnt % DIV))
-#define TIMER_DIV_TRIG_UDP		10
-#define TIMER_DIV_BLINK 		250
-#define TIMER_DIV_PHY_STATUS	200
-#define TIMER_DIV_COUNTERS		100
-static void timer_1k_cb(TIM_HandleTypeDef *htim)
-{
-	timer_1k_cnt++;
-
-	TIMER_DIV(TIMER_DIV_TRIG_UDP)
-		trig_udp++;
-
-	if(W5500_init_done)
-	{
-		if(!(timer_1k_cnt % 100))
-			if(!W5500_ip_assigned)
-				DHCP_time_handler();
-	}
-
-	TIMER_DIV(TIMER_DIV_BLINK)
-		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-
-	TIMER_DIV(TIMER_DIV_PHY_STATUS)
-	{
-		// PHY/DEV state
-	    SSD1306_text_put_at(&oled2, 0,  4, (W5500_phy & 0x04) ? "FULL" : "HALF");
-		SSD1306_text_put_at(&oled2, 0,  9, (W5500_phy & 0x02) ? "100" : "10 ");
-		SSD1306_text_put_at(&oled2, 0, 13, (W5500_phy & 0x01) ? " UP" : "DWN");
-	    SSD1306_text_put_at(&oled2, 0, 0, W5500_id == 0x04 ? "WIZ" : "???");
-	}
-
-	TIMER_DIV(TIMER_DIV_COUNTERS)
-	{
-		int len;
-		char tmp[32];
-		static char running[] = "----------\\\\\\\\\\\\\\\\\\\\|||||||||||//////////";
-
-		len = dec_signed_to_str(rot1, tmp);
-		SSD1306_text_put_at(&oled1, 2, 7, "" TXT_PAD);
-		SSD1306_text_put_at(&oled1, 2, 16 - len, tmp);
-
-		len = dec_signed_to_str(rot2, tmp);
-		SSD1306_text_put_at(&oled1, 3, 7, "" TXT_PAD);
-		SSD1306_text_put_at(&oled1, 3, 16 - len, tmp);
-
-		len = dec_signed_to_str(rot3, tmp);
-		SSD1306_text_put_at(&oled1, 4, 7, "" TXT_PAD);
-		SSD1306_text_put_at(&oled1, 4, 16 - len, tmp);
-
-		len = dec_unsigned_to_str(cnt_uart, tmp);
-		SSD1306_text_put_at(&oled1, 6, 7, "" TXT_PAD);
-		SSD1306_text_put_at(&oled1, 6, 16 - len, tmp);
-
-		len = dec_unsigned_to_str(cnt_pkt, tmp);
-		SSD1306_text_put_at(&oled1, 7, 7, "" TXT_PAD);
-		SSD1306_text_put_at(&oled1, 7, 16 - len, tmp);
-
-		SSD1306_char_put_at(&oled2, 2, 8, running[cnt_udp % sizeof(running)]);
-	};
-}
-
-// ---------------------------------------------------
-
-
-#define UART1_BUF_SIZE 32
-static uint8_t uart1_buf_data[2 * UART1_BUF_SIZE];
-volatile static uint32_t uart1_half_cnt = 0, uart1_full_cnt = 0;
-
-static inline int uart1_packet_find(uint8_t* buf)
-{
-	int i;
-
-	for(i = 0; i < 17; i++)
-		if(buf[i] == 0xDE && buf[i + 1] == 0xC0)
-			return i;
-	return -1;
-}
-
-static inline int uart1_packet_parse(uint8_t* buf)
-{
-	int i;
-	uint32_t cs0, cs1 = 0, r1 = 0, r2 = 0, r3 = 0;
-
-	cs0 = buf[2];
-	cs0 <<= 8;
-	cs0 |= buf[3];
-	cs0 ^= 0x0000FFFF;
-
-	for(i = 4; i < 15; i++)
-	{
-		uint8_t v = buf[i];
-		cs1 += v;
-		switch(i)
-		{
-			case 6:
-			case 7:
-			case 8: r1 <<= 8; r1 |= v; break;
-			case 9:
-			case 10:
-			case 11: r2 <<= 8; r2 |= v; break;
-			case 12:
-			case 13:
-			case 14: r3 <<= 8; r3 |= v; break;
-		}
-	}
-
-	/* checksum */
-	if(cs1 != cs0)
-		return -1;
-
-	/* sign restore */
-	if(r1 & 0x00800000)
-		r1 |= 0xFF000000;
-	if(r2 & 0x00800000)
-		r2 |= 0xFF000000;
-	if(r3 & 0x00800000)
-		r3 |= 0xFF000000;
-
-	/* save data */
-	rot1 = r1;
-	rot2 = r2;
-	rot3 = r3;
-
-	/* correct packet counter */
-	cnt_pkt++;
-
-	return 0;
-}
-
-static void uart1_cb_full(UART_HandleTypeDef *huart)
-{
-	uart1_full_cnt++;
-	cnt_uart++;
-}
-
-static void uart1_cb_half(UART_HandleTypeDef *huart)
-{
-	int r;
-
-	uart1_half_cnt++;
-
-	r = uart1_packet_find(uart1_buf_data);
-	if(r >= 0)
-		uart1_packet_parse(uart1_buf_data + r);
-}
-
-static void uart1_cb_err(UART_HandleTypeDef *huart)
-{
-	uart1_half_cnt++;
-}
 
 // ---------------------------------------------------
 
@@ -363,8 +111,6 @@ int _write(int file, char *data, int len)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  int i, len, p;
-  char tmp[32];
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -373,7 +119,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  app_init();
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -384,8 +130,8 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USB_DEVICE_Init();
   MX_DMA_Init();
+  MX_USB_DEVICE_Init();
   MX_USART1_UART_Init();
   MX_I2C1_Init();
   MX_SPI1_Init();
@@ -393,190 +139,17 @@ int main(void)
   MX_TIM1_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
-
-  /* setup uart handling */
-  HAL_UART_RegisterCallback(&huart1, HAL_UART_ERROR_CB_ID, uart1_cb_err);
-  HAL_UART_RegisterCallback(&huart1, HAL_UART_ABORT_COMPLETE_CB_ID, uart1_cb_err);
-  HAL_UART_RegisterCallback(&huart1, HAL_UART_ABORT_TRANSMIT_COMPLETE_CB_ID, uart1_cb_err);
-  HAL_UART_RegisterCallback(&huart1, HAL_UART_ABORT_RECEIVE_COMPLETE_CB_ID, uart1_cb_err);
-
-  HAL_UART_RegisterCallback(&huart1, HAL_UART_RX_COMPLETE_CB_ID, uart1_cb_full);
-  HAL_UART_RegisterCallback(&huart1, HAL_UART_RX_HALFCOMPLETE_CB_ID, uart1_cb_half);
-  HAL_UART_Receive_DMA(&huart1, uart1_buf_data, 2 * UART1_BUF_SIZE);
-
-  W5500_RST_LOW;
-
-  // run oleds
-  SSD1306_oled1_init();
-  SSD1306_run(&oled1);
- /*
-  SSD1306_oled2_init();
-  SSD1306_run(&oled2);
- */
-
-  // OLED WELCOME
-  SSD1306_text_cls(&oled1);
-  SSD1306_text_put_at(&oled1, 1, 1, "Lens" TXT_PAD);
-  SSD1306_text_put_at(&oled1, 3, 1, "Rotary" TXT_PAD);
-  SSD1306_text_put_at(&oled1, 4, 1, "Decoder" TXT_PAD);
-  SSD1306_text_put_at(&oled1, 7, 1, "initializing #3" TXT_PAD);
-  SSD1306_text_cls(&oled2);
-  SSD1306_text_put_at(&oled2, 3, 1, "HELLO WORLD!!" TXT_PAD);
-
-  HAL_Delay(100);
-
-  W5500_RST_HIGH;
-
-  // Registering W5500 callbacks...
-  reg_wizchip_cs_cbfunc(W5500_Select, W5500_Unselect);
-  reg_wizchip_spi_cbfunc(W5500_ReadByte, W5500_WriteByte);
-  reg_wizchip_spiburst_cbfunc(W5500_ReadBuff, W5500_WriteBuff);
-
-  // Calling wizchip_init
-  uint8_t rx_tx_buff_sizes[] = {2, 2, 2, 2, 2, 2, 2, 2};
-  wizchip_init(rx_tx_buff_sizes, rx_tx_buff_sizes);
-
-  // Calling DHCP_init()
-  for(i = 0; i < 12; i++)
-	  CS += *(uint8_t*)(UID_BASE + i);
-  wiz_NetInfo net_info = {
-#if 0
-      .mac  = {0xEA, 0x11, 0x22, 0x33, 0x44, 0xEA},
-#else
-      .mac  = { 0xBA, 0xDE, 0xC0, 0xDE, CS & 0x00FF, 0 },
-#endif
-      .dhcp = NETINFO_DHCP
-  };
-  p_net_info = &net_info;
-  setSHAR(net_info.mac);// set MAC address before using DHCP
-  DHCP_init(W5500_DHCP_SOCKET, W5500_dhcp_buffer);
-  reg_dhcp_cbfunc(W5500_cb_IPAssigned, W5500_cb_IPAssigned, W5500_cb_IPConflict);
-
-  HAL_Delay(100);
-
-  // initial LED pic
-  SSD1306_text_cls(&oled1);
-  SSD1306_text_put_at(&oled1, 0, 0, " LensRotaryDecod" TXT_PAD);
-  SSD1306_text_put_at(&oled1, 1, 0, "----------------" TXT_PAD);
-  SSD1306_text_put_at(&oled1, 2, 0, " ZOOM:    122321" TXT_PAD);
-  SSD1306_text_put_at(&oled1, 3, 0, "FOCUS:    323323" TXT_PAD);
-  SSD1306_text_put_at(&oled1, 4, 0, " IRIS:   5676575" TXT_PAD);
-  SSD1306_text_put_at(&oled1, 5, 0, "----------------" TXT_PAD);
-  SSD1306_text_put_at(&oled1, 6, 0, "UARTs:    323323" TXT_PAD);
-  SSD1306_text_put_at(&oled1, 7, 0, " PKTs:   5676575" TXT_PAD);
-
-  SSD1306_text_cls(&oled2);
-  SSD1306_text_put_at(&oled2, 0, 0, "---:XXXX|XXX|XXX" TXT_PAD);
-  SSD1306_text_put_at(&oled2, 3, 0, " --dhcp query-- ");
-
-  /* show MAC address */
-  for(p = 0, i = 0; i < 6; i++)
-  {
-	  static const char* hex = "0123456789ABCDEF";
-	  tmp[p++] = hex[(net_info.mac[i] >> 4) & 0x0f];
-	  tmp[p++] = hex[(net_info.mac[i] >> 0) & 0x0f];
-	  tmp[p++] = ':';
-  }
-  tmp[p++] = 0;
-  SSD1306_text_put_at(&oled2, 1, 0, tmp);
-
-  SSD1306_text_put_at(&oled2, 2, 0, "                " TXT_PAD);
-
-  // timer task
-  HAL_TIM_RegisterCallback(&htim1, HAL_TIM_PERIOD_ELAPSED_CB_ID, timer_1k_cb);
-  HAL_TIM_Base_Start_IT(&htim1);
-
+  app_begin();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-
   while (1)
   {
+	app_loop();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  W5500_init_done = 1;
-
-	  /* wait until DHCP server find ip */
-      while(!W5500_ip_assigned)
-      {
-  		W5500_phy = getPHYCFGR();
-  		W5500_id = getVERSIONR();
-        DHCP_run();
-      }
-
-      /* setup found IP address */
-      wizchip_setnetinfo(&net_info);
-
-	  /* update ip on screen */
-	  {
-		  p = 0;
-
-		  SSD1306_text_put_at(&oled2, 3, p, " "); p++;
-
-		  len = dec_unsigned_to_str(net_info.ip[0], tmp);
-		  SSD1306_text_put_at(&oled2, 3, p, tmp); p += len;
-		  SSD1306_text_put_at(&oled2, 3, p, "."); p++;
-
-		  len = dec_unsigned_to_str(net_info.ip[1], tmp);
-		  SSD1306_text_put_at(&oled2, 3, p, tmp); p += len;
-		  SSD1306_text_put_at(&oled2, 3, p, "."); p++;
-
-		  len = dec_unsigned_to_str(net_info.ip[2], tmp);
-		  SSD1306_text_put_at(&oled2, 3, p, tmp); p += len;
-		  SSD1306_text_put_at(&oled2, 3, p, "."); p++;
-
-		  len = dec_unsigned_to_str(net_info.ip[3], tmp);
-		  SSD1306_text_put_at(&oled2, 3, p, tmp); p += len;
-		  SSD1306_text_put_at(&oled2, 3, p, "        ");
-	  };
-
-	  static uint8_t addr[4] = {255, 255, 255, 255}; //{10, 1, 5, 57};
-	  uint16_t port = 50000 + (CS & 0x00ff);
-	  static uint8_t buf[29] = {0};
-	  socket(W5500_FREED_SOCKET, Sn_MR_UDP, port, 0);
-	  trig_udp = 0;
-	  while(1)
-	  {
-		  if(trig_udp)
-		  {
-			  trig_udp = 0;
-			  cnt_udp++;
-			  {
-				  uint32_t v;
-				  uint8_t cs = 0x40;
-
-				  cs -= buf[0] = 0xD1;
-				  cs -= buf[1] = (CS & 0x00ff);
-
-				  v = rot1;
-				  cs -= buf[20] = v >> 16;
-				  cs -= buf[21] = v >>  8;
-				  cs -= buf[22] = v >>  0;
-
-				  v = rot2;
-				  cs -= buf[23] = v >> 16;
-				  cs -= buf[24] = v >>  8;
-				  cs -= buf[25] = v >>  0;
-
-				  v = rot3;
-				  cs -= buf[26] = v >>  8;
-				  cs -= buf[27] = v >>  0;
-
-				  buf[28] = cs;
-			  }
-
-			  len = sendto(W5500_FREED_SOCKET, buf, sizeof(buf), addr, port);
-
-			  W5500_phy = getPHYCFGR();
-			  W5500_id = getVERSIONR();
-
-			  if(trig_udp)
-				  trig_udp++;
-		  };
-	  }
   }
   /* USER CODE END 3 */
 }
@@ -594,6 +167,7 @@ void SystemClock_Config(void)
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
@@ -609,6 +183,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
   /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
@@ -890,6 +465,8 @@ static void MX_DMA_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -898,17 +475,17 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_PIN_GPIO_Port, LED_PIN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, W5500_SCS_Pin|W5500_RST_Pin, GPIO_PIN_SET);
 
-  /*Configure GPIO pin : PC13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  /*Configure GPIO pin : LED_PIN_Pin */
+  GPIO_InitStruct.Pin = LED_PIN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_Init(LED_PIN_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : W5500_SCS_Pin W5500_RST_Pin */
   GPIO_InitStruct.Pin = W5500_SCS_Pin|W5500_RST_Pin;
@@ -927,6 +504,8 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -964,4 +543,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
