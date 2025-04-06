@@ -10,7 +10,7 @@ int app_loop();
 #define DMA_BUF_SIZE        400	// 4MHz / 400 = 10KHz
 #define TIMER_PRESCALER     8 	// 96MHz / 8 = 12Mhz
 #define TIMER_PERIOD        2 	// 12Mhz / 2 = 6MHz
-#define SERIAL_OUTPUT_TEXT	// This defines if UART1 sent with human readable text or binary formatted packet
+//#define SERIAL_OUTPUT_TEXT	// This defines if UART1 sent with human readable text or binary formatted packet
 
 /*
 NB:
