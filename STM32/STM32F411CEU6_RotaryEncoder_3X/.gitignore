@@ -1,0 +1,13 @@
+.settings
+Core
+Debug
+Drivers
+Middlewares
+Release
+USB_DEVICE
+.project
+.mxproject
+.cproject 
+*.ld
+*.launch
+
